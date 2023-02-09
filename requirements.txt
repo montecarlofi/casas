@@ -1,2 +1,9 @@
 streamlit
 streamlit_option_menu
+altair
+numpy
+plotly
+plotly.express
+pandas
+matplotlib.pyplot
+numpy.random
