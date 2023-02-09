@@ -5,5 +5,4 @@ numpy
 plotly
 plotly.express
 pandas
-matplotlib.pyplot
-numpy.random
+matplotlib
