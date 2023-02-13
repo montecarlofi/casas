@@ -81,7 +81,7 @@ with colB:
 	ingreso_pesimista_B /= 1000
 	ingreso_optimista_B /= 1000
 
-	retrasoB = st.slider("Retraso en meses B", 0, 36, 13, 6)
+	retrasoB = st.slider("Retraso en meses B", 0, 36, 12, 6)
 	retrasos.append(retrasoB); retrasos.append(retrasoB)
 
 	#st.markdown("""---""")
