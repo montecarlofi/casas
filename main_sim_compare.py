@@ -28,16 +28,16 @@ with st.sidebar:
 		interes_banco_A = st.number_input('Tasa bancaria A', value=18.70) / 100
 		portionA = st.slider('% prestado A', value=70) / 100
 		P_A = invA * portionA
-		anos_con_prestamo_A = st.slider("Años con préstamo A", 1, 30, 5, 1)
+		anos_con_prestamo_A = st.slider("Años con préstamo A", 1, 30, 4, 1)
 		meses_con_prestamo_A = anos_con_prestamo_A * 12 
 
 	expanderB = st.expander(label='Inversión B')
 	with expanderB:
-		invB = st.number_input('Inversión B', value=400)
+		invB = st.number_input('Inversión B', value=380)
 		interes_banco_B = st.number_input('Tasa bancaria B', value=18.7) / 100
 		portionB = st.slider('% prestado', value=70) / 100
 		P_B = invB * portionB
-		anos_con_prestamo_B = st.slider("Años con préstamo ", 1, 30, 5, 1, key="anos_B")
+		anos_con_prestamo_B = st.slider("Años con préstamo ", 1, 30, 3, 1, key="anos_B")
 		meses_con_prestamo_B = anos_con_prestamo_B * 12 	
 
 	st.markdown("""---""")
@@ -51,8 +51,8 @@ with colA:
 	r_mes_A = np.e**(np.log(valorizacionA)/12)
 	#rA = r_mes_A - 1
 
-	ingreso_pesimista_A = st.slider("Ingreso pesimista K", 0, 5000, 1800, 100)
-	ingreso_optimista_A = st.slider("Ingreso optimista K", 0, 6000, 2500, 100)
+	ingreso_pesimista_A = st.slider("Ingreso pesimista K", 0, 5000, 2400, 100)
+	ingreso_optimista_A = st.slider("Ingreso optimista K", 0, 6000, 3500, 100)
 	ingreso_pesimista_A /= 1000
 	ingreso_optimista_A /= 1000
 
@@ -76,12 +76,12 @@ with colB:
 	#loan_interest = st.selectbox(label, [x for x in range(10)], index=0, format_func=special_internal_function, key=None, help=None, on_change=None, args=None, kwargs=None, *, disabled=False, label_visibility="visible")
 	#loan_interest = st.selectbox('Tasa bancaria', np.arange(1, 20, 0.25), index=27)
 
-	ingreso_pesimista_B = st.slider("Ingreso pesimista K", 0, 5000, 1800, 100, key='ingreso_pesimista_B')
+	ingreso_pesimista_B = st.slider("Ingreso pesimista K", 0, 5000, 2800, 100, key='ingreso_pesimista_B')
 	ingreso_optimista_B = st.slider("Ingreso optimista K", 0, 5000, 4000, 100, key='ingreso_optimista_B')
 	ingreso_pesimista_B /= 1000
 	ingreso_optimista_B /= 1000
 
-	retrasoB = st.slider("Retraso en meses B", 0, 36, 6, 6)
+	retrasoB = st.slider("Retraso en meses B", 0, 36, 13, 6)
 	retrasos.append(retrasoB); retrasos.append(retrasoB)
 
 	#st.markdown("""---""")
