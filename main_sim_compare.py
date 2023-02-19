@@ -3,558 +3,394 @@ import streamlit as st; st.set_page_config(layout="wide")
 import altair as alt
 #import display.hide_streamlit #as st_hide
 import streamlit as st; #st.set_page_config(layout="wide")
-from streamlit_option_menu import option_menu
+#from streamlit_option_menu import option_menu
 import numpy as np 
 import plotly.express as px
 import pandas as pd; #import get_data
-import matplotlib.pyplot as plt
-from numpy.random import default_rng
-RNG = default_rng().standard_normal
+#import matplotlib.pyplot as plt
+#from numpy.random import default_rng
+#RNG = default_rng().standard_normal
+import process as proc
+import get as get
+import display as disp
 
-MAX_LENGTH = 1200
+MAX_LENGTH = 2000
+MONEY_MULTIPLIER = 1000
+N = 4
 
-# costo de oportunidad ############################# 
-# costo de op: ROI
 # compliance probability (investing the same amount in a non-house-buying situation)
+# interés variable
 # mc sim on: interest, ingresos, occupancy, stock market
 
-#colA, colB, colD, colGraph = st.columns([1, 1, 1, 5], gap="large") # gap does not work with older Python versions.
-colA, colempty, colB, colempty2, colGraph = st.columns([2, 1, 2, 1, 6])
+# problem with (i+1) vs (i+i) in some series
+
+cols = []
+_ = [(cols.append(2), cols.append(1)) for x in range(N)]
+cols.append(np.array(cols).sum())
+#colA, colempty, colB, colempty2, colC, colempty3, colD, colempty4, colGraph = st.columns([2, 1, 2, 1, 2, 1, 2, 1, 8])
+colA, colempty, colB, colempty2, colC, colempty3, colD, colempty4, colGraph = st.columns(cols)
+##colA, colempty, colB, colempty2, colGraph = st.columns([2, 1, 2, 1, 6])
+columns = [colA, colB, colC, colD]
+
+
+inputs = get.read_data()[0:N]
+readdata = get.read_data()[0:N]
+colnames = [inputs[i]['name'] for i in range(N)]
+ingresos = [MONEY_MULTIPLIER*inputs[i]['ingreso_pesimista'] for i in range(N)]
+inversiones = [inputs[i]['inversion'] for i in range(N)]
+tasas = [inputs[i]['tasa'] for i in range(N)]
+#porciones = [inputs[i]['porcion'] for i in range(N)]
+#meses_con_prestamos = [inputs[i]['meses_con_prestamo'] for i in range(N)]
+retrasos = [inputs[i]['retraso'] for i in range(N)]
+valorizaciones = [inputs[i]['valorizacion'] for i in range(N)]
+hide_graphs = [inputs[i]['hide_graph'] for i in range(N)]
+max_desembolso_mensual = inputs[0]['max_desembolso_mensual'] # max_desembolso_mensual = [inputs[n]['max_desembolso_mensual'] for n in range(N)]
+try:
+	cap_inis = [inputs[i]['cap_ini'] for i in range(N)]
+except Exception as e:
+	cap_inis = [0 for i in range(N)]
+
+processed = [{} for i in range(N)]
+
+# Names
+for i in range(N):
+	with columns[i]:
+		key = "Sim" + str(i)
+		colnames[i] = st.text_input('', value=colnames[i], key=key) # colnames[i] = st.text_input('', value=f"simname{i}", key=f"simname{i}")
+		hide_graph = st.checkbox("", value=hide_graphs[i], key=f'hide_graph_{key}', on_change=None, disabled=False)
+		inputs[i].update({ 'hide_graph': hide_graph })
 
 with st.sidebar:
-	expanderA = st.expander(label='Inversión A')
-	with expanderA:
-		invA = st.number_input('Monto A', value=400)
-		interes_banco_A = st.number_input('Tasa bancaria A', value=18.70) / 100
-		portionA = st.slider('% prestado A', value=70) / 100
-		P_A = invA * portionA
-		anos_con_prestamo_A = st.slider("Años con préstamo A", 1, 30, 4, 1)
-		meses_con_prestamo_A = anos_con_prestamo_A * 12 
+	st.subheader("SM Invs.  \n  ")
 
-	expanderB = st.expander(label='Inversión B')
-	with expanderB:
-		invB = st.number_input('Inversión B', value=380)
-		interes_banco_B = st.number_input('Tasa bancaria B', value=18.7) / 100
-		portionB = st.slider('% prestado', value=70) / 100
-		P_B = invB * portionB
-		anos_con_prestamo_B = st.slider("Años con préstamo ", 1, 30, 3, 1, key="anos_B")
-		meses_con_prestamo_B = anos_con_prestamo_B * 12 	
+	expanders = [st.expander(label=f'Inv: {colnames[i]}') for i in range(N)]
+	for i in range(N):
+		with expanders[i]:
+			inputs[i] = proc.input_sidebar(colnames[i], inversion=inversiones[i], cap_propio=cap_inis[i], tasa=tasas[i], hide_graph=inputs[i]['hide_graph'])#, max_desembolso_mensual=max_desembolso_mensual)
 
 	st.markdown("""---""")
-	meses_display = st.selectbox('Ilustración (meses)', np.arange(60, 721, 60), index=1, key="meses_display")
 
-with colA:
-	st.subheader('_Sim A_')
-	#st.write("───── Inversión A ─────")
-	valorizacionA = st.slider("Valorización A", -5, 15, 0, 1)
-	valorizacionA = 1 + (valorizacionA/100)
-	r_mes_A = np.e**(np.log(valorizacionA)/12)
-	#rA = r_mes_A - 1
-
-	ingreso_pesimista_A = st.slider("Ingreso pesimista K", 0, 5000, 2400, 100)
-	ingreso_optimista_A = st.slider("Ingreso optimista K", 0, 6000, 3500, 100)
-	ingreso_pesimista_A /= 1000
-	ingreso_optimista_A /= 1000
-
-	retrasos = []
-	retrasoA = st.slider("Retraso en meses A", 0, 36, 0, 6)
-	retrasos.append(retrasoA); retrasos.append(retrasoA)
-
-
-	#st.markdown("""---""")
-	#r_mes_A_opor = st.slider("Crecimiento A", 0, 15, 0, 1)
-
-with colB:
-	st.subheader('_Sim B_')
-	#st.write("───── Inversión B ─────")
-	valorizacionB = st.slider("Valorización B", -5, 15, 0, 1, key='valorizacionB')#, label_visibility="visible")
-	valorizacionB = 1 + (valorizacionB/100)
-	r_mes_B = np.e**(np.log(valorizacionB)/12)
-	#rB = r_mes_B - 1
-
-	#loan_interest = st.slider("Interés anual bancario ", 1, 20, 8, 1) / 100
-	#loan_interest = st.selectbox(label, [x for x in range(10)], index=0, format_func=special_internal_function, key=None, help=None, on_change=None, args=None, kwargs=None, *, disabled=False, label_visibility="visible")
-	#loan_interest = st.selectbox('Tasa bancaria', np.arange(1, 20, 0.25), index=27)
-
-	ingreso_pesimista_B = st.slider("Ingreso pesimista K", 0, 5000, 2800, 100, key='ingreso_pesimista_B')
-	ingreso_optimista_B = st.slider("Ingreso optimista K", 0, 5000, 4000, 100, key='ingreso_optimista_B')
-	ingreso_pesimista_B /= 1000
-	ingreso_optimista_B /= 1000
-
-	retrasoB = st.slider("Retraso en meses B", 0, 36, 12, 6)
-	retrasos.append(retrasoB); retrasos.append(retrasoB)
-
-	#st.markdown("""---""")
-	#r_mes_B_opor = st.slider("Crecimiento B", 0, 15, 0, 1)
-
-	#linknames = ['A', 'B', 'C']
-	#the_icons = ['globe', 'gear', 'geo-fill'] # ['globe'] + ['geo-fill' for x in range(len(runners))] + ['gear']
-	#selected2 = option_menu(None, linknames, 
-	#        icons=the_icons, menu_icon="cast", default_index=1)
-	#selected2
-
-rates_mes = [r_mes_A, r_mes_A, r_mes_B, r_mes_B]
-
-ingresos = [ingreso_pesimista_A, ingreso_optimista_A, ingreso_pesimista_B, ingreso_optimista_B]
-
-inversiones = [invA, invA, invB, invB]
-porciones = [portionA, portionA, portionB, portionB]
-
-# Capitales
-#capitales = [inv*(1-portion) for inv, portion in zip([invA, invA, invB, invB], [portionA, portionA, portionB, portionB])]
-capitales = [inv*(1-portion) for inv, portion in zip(inversiones, porciones)]
-
-prestamos = [(inv * porcion) for inv, porcion in zip(inversiones, porciones)]
-
-# Amortización
-def amort_mes(i, n, P):
-	i /= 12
-	return (P*i*(1+i)**n) / ((1+i)**n - 1)
-
-amort_mes_A   = amort_mes(interes_banco_A, meses_con_prestamo_A, P_A)
-amort_mes_B   = amort_mes(interes_banco_B, meses_con_prestamo_B, P_B)
-amort_total_A = amort_mes_A * meses_con_prestamo_A
-amort_total_B = amort_mes_B * meses_con_prestamo_B
-amorts = [amort_total_A, amort_total_A, amort_total_B, amort_total_B]
-
-outlay_A = invA * (1-portionA) + amort_total_A
-outlay_B = invB * (1-portionB) + amort_total_B
-outlay_A = amort_total_A
-outlay_B = amort_total_B
-deuda_A = amort_total_A
-deuda_B = amort_total_B
-
-deudas = amorts.copy()
-
-deudas_y_capitales = [a+b for a, b in zip(deudas, capitales)]
-
-#intereses_totales = [am-cap for am, cap in zip(amorts, capitales)]
-intereses_totales = [am-pres for am, pres in zip(amorts, prestamos)]
-
-# Costos de oportunidades
-derrames = [ingreso_pesimista_A - amort_mes_A, ingreso_optimista_A - amort_mes_A, ingreso_pesimista_B - amort_mes_B, ingreso_optimista_B - amort_mes_B]
-for i in range(len(derrames)):
-	if derrames[i] >= 0:
-		derrames[i] = 0.000000001
-derrames_totales = [derrames[0]*meses_con_prestamo_A, derrames[1]*meses_con_prestamo_A, derrames[2]*meses_con_prestamo_B, derrames[3]*meses_con_prestamo_B]
-
-# Costo de préstamos
-costo_A = deuda_A - invA*portionA
-costo_B = deuda_B - invB*portionB
-costos_prestamos = [costo_A, costo_A, costo_B, costo_B]
-
-with colA:
-	#message  = f'{labels[0]}: {derrames[0]:.2f}/mes ({derrames_totales[0]:.0f})'
-	#message  = f'A1: {derrames[0]:.2f}/mes ({derrames_totales[0]:.0f})'
-	#st.write(message)
-	#st.write(-deuda_A-capitales[0])
-
-	#st.metric(label="De bolsillo mes (tot):", value="", delta=message, delta_color="off")#, delta_color="inverse")
+	max_desembolso_mensual = st.number_input('Max desembolso mensual', 0, 30, max_desembolso_mensual)
+	_ = [inputs[n].update({ 'max_desembolso_mensual': max_desembolso_mensual}) for n in range(N)]
+	meses_display = st.selectbox('Ilustración (meses)', np.arange(60, 721, 60), index=4, key="meses_display")
 
 	st.markdown("""---""")
-	r_mes_A_opor = st.slider("Crecimiento A", 0, 15, 0, 1)
+	r_mes_opor = st.slider("Crec. opor. alt.", 0, 15, 0, 1)
+	r_mes_opor = 1 + (r_mes_opor/100)
+	r_mes_opor = np.e**(np.log(r_mes_opor)/12)
 
-with colB:
-	#message2 = f'B1: {derrames[2]:.2f}/mes ({derrames_totales[2]:.0f})'
-	#st.write(message2)
-	#st.write(-deuda_B-capitales[2])
+columns = [colA, colB, colC, colD]
+for i in range(N):
+	with columns[i]:
+		#st.subheader(f'_{colnames[i]}_')
+		inputs[i].update(proc.input_cols(colnames[i], 
+			hide_graph=inputs[i]['hide_graph'], 
+			ingreso=ingresos[i], 
+			retraso=retrasos[i],# retraso=disk_inputs[i]['retraso'], 
+			valorizacion=valorizaciones[i],#)) # valorizacion=disk_inputs[i]['valorizacion']))
+			max_desembolso_mensual=inputs[i]['max_desembolso_mensual']))
 
-	st.markdown("""---""")
-	r_mes_B_opor = st.slider("Crecimiento B", 0, 15, 0, 1)
-
-# Oportunidad
-opors = [0, 0, 0, 0]
-costos_de_oportunidad = [-inv*(1-portion) + derrame_total for inv, portion, derrame_total in zip([invA, invA, invB, invB], [portionA, portionA, portionB, portionB], derrames_totales)]
-#geo = lambda P, r, n: P * ((1-r**n) / (1-r))
-geo = lambda P, r, n: P * (1-r**n) / (1-r)
-#r_mes_A_opor = st.slider("Crecimiento A", 0, 15, 0, 1)
-#r_mes_B_opor = st.slider("Crecimiento B", 0, 15, 0, 1)
-
-if r_mes_A_opor == 0:
-	opors[0] = capitales[0] + meses_con_prestamo_A * -derrames[0]
-	opors[1] = capitales[1] + meses_con_prestamo_A * -derrames[1]
-else:
-	r_mes_A_opor = 1 + (r_mes_A_opor/100)
-	r_mes_A_opor = np.e**(np.log(r_mes_A_opor)/12)
-	opors[0] = geo(-derrames[0], r_mes_A_opor, meses_con_prestamo_A) + capitales[0]*r_mes_A_opor**meses_con_prestamo_A
-	opors[1] = geo(-derrames[1], r_mes_A_opor, meses_con_prestamo_A) + capitales[1]*r_mes_A_opor**meses_con_prestamo_A
-if r_mes_B_opor == 0:
-	opors[2] = capitales[2] + meses_con_prestamo_B * -derrames[2]
-	opors[3] = capitales[3] + meses_con_prestamo_B * -derrames[3]
-else:
-	r_mes_B_opor = 1 + (r_mes_B_opor/100)
-	r_mes_B_opor = np.e**(np.log(r_mes_B_opor)/12)
-	opors[2] = geo(-derrames[2], r_mes_A_opor, meses_con_prestamo_B) + capitales[2]*r_mes_B_opor**meses_con_prestamo_B
-	opors[3] = geo(-derrames[3], r_mes_A_opor, meses_con_prestamo_B) + capitales[3]*r_mes_B_opor**meses_con_prestamo_B
-
-
-	#print(opors); exit()
-	#print(costos_de_oportunidad); exit()
-	#costo_oportunidad_A1 = -invA * (1-portionA) + derrames_totales[0]
-
-
-#print(derrames)
-#print(amort_total_A, amort_total_B)
-#print(outlay_A, outlay_B)#; exit()
 
 # Matrices setup
-mmatrix = np.zeros([4, MAX_LENGTH])
-#print(outlay_A, outlay_B)
-#print(costos_prestamos[0]); exit()
-def sim(inv, deuda, ingreso, r, n, meses_con_prestamo):
-	y = np.zeros([1, n])
-	#y[0][i] = -deuda
-	#for i in range(1, n):
-	for i in range(0, n):
-		y[0][i] = -deuda + ingreso*i + inv*r**i - inv
-	return y
+#mmatrix = np.zeros([N, MAX_LENGTH])
+#inputs[0]['inversion'] = 1000
+mmatrix = proc.sim_main(inputs, MAX_LENGTH)
+imatrix = np.zeros([N, MAX_LENGTH])
+sin_val_matrix = proc.sim_main(inputs, MAX_LENGTH)
+#repay_matrix = np.zeros([N, MAX_LENGTH])
+#pagar_solo_matrix = np.zeros([N, MAX_LENGTH])
 
-def sim0(inv, cap, costo_prestamo, ingreso, r, n, meses_con_prestamo):
-	y = np.zeros([1, n])
-	for i in range(0, n):
-		#y[0][i] = -costo_prestamo + ingreso*i + inv*r**i #- inv#- cap
-		y[0][i] = ingreso*i + inv*r**i #- inv#- cap
-	return y
+# Find minimum repayment times.
+# Each steps represents the total loan+cost if it were to be paid in x steps. (1, END+1)
+loan_matrix = proc.loan_matrix(inputs, MAX_LENGTH) 
+print(readdata[0])
+#_ = [inputs[n].update({'max_desembolso_mensual': 10}) for n in range(N)]
+xs_repay, ys_repay = proc.calc_min_repay_times(inputs, loan_matrix)
 
-def sim00(inv, ingreso, r, n, retraso=0):
-	y = np.zeros([1, n])
-	if retraso == 0:
-		start = 0
-	else:
-		start = retraso
-		for i in range(0, start):
-			y[0][i] = None
-	for i in range(start, n):
-		y[0][i] = ingreso*(i-start) + inv*r**(i-start)
-	return y
+# Price of loans.
+Cs = [inputs[n]['inversion'] - (inputs[n]['cap_ini'] + inputs[n]['max_desembolso_mensual']*inputs[n]['retraso']) for n in range(N)]
+#print("Y REP ", ys_repay[0]); #exit()
+# If loan/cap_ini is very high, then ys_repay will be outside MAX_LENGTH
 
-def sim_paga_solo(inv, debt_and_cap, ingreso, r, n, retraso=0):
-	#print(f"Debt and cap is {debt_and_cap}")
-	y = np.zeros([1, n])
+_ = [processed[n].update({ 'costo_prestamo': ys_repay[n] - Cs[n] }) for n in range(N)]
 
-	if retraso == 0:
-		start = 0
-	else:
-		start = retraso
-		for i in range(0, start):
-			y[0][i] = None
+# Deuda y capital
+_ = [processed[n].update({'deuda_y_capital': inputs[n]['inversion'] + processed[n]['costo_prestamo']}) for n in range(N)]
 
-	for i in range(start, n): # Could go out of bounds because of i+1 and i+2 ?
-		y[0][i] = -debt_and_cap + ingreso*(i-start) + inv*r**(i-start) - inv
-		#print(y[0][i])
-		if y[0][i] >= 0:#debt_and_cap:
-			#y = y[0:1,0:i+1]
-			y[0][i+1] = -debt_and_cap + ingreso*(i-start) + inv*r**(i-start) - inv
-			y[0:1,0:i+2] = y[0:1,0:i+2]
-			y[0:1,i+1:] = None
+# Matrix for how long it takes to recover cash and capital spent. No compounding included.
+# Then make flipped (- to 0) matrix.
+months_paid = [xs_repay[n] + inputs[n]['retraso'] for n in range(N)]
+cash_spent = [months_paid[n]*inputs[n]['max_desembolso_mensual'] + inputs[n]['cap_ini'] for n in range(N)]
+_ = [processed[n].update({ 'months_paid': months_paid[n] }) for n in range(N)]
+_ = [processed[n].update({ 'cash_spent': cash_spent[n] }) for n in range(N)]
+# Income only
+income_only_matrix = proc.sim_income_only(inputs, MAX_LENGTH)
+m = np.array(cash_spent).reshape(N, 1)
+inverse_income_matrix = -m[::] + income_only_matrix[:]
+xs_inverse_income, ys_inverse_income = proc.find_x_intercepts_for_y(inverse_income_matrix, targets=[0 for n in range(N)])
+inverse_income_matrix = proc.cut_after(inverse_income_matrix, targets=[0 for n in range(N)])
 
-			#y[0:1,0:i+1] = y[0:1,0:i+1]
-			#y[0:1,i:] = None
-			break
-	return y
+# Income+desembolso
+income_and_desembolso_matrix = proc.sim_income_and_desembolso(inputs, MAX_LENGTH)
+m = np.array(cash_spent).reshape(N, 1)
+income_and_desembolso_matrix_inverse = -m[::] + income_and_desembolso_matrix[:]
+xs_inverse_all, ys_inverse_all = proc.find_x_intercepts_for_y(income_and_desembolso_matrix, targets=[0 for n in range(N)])
+income_and_desembolso_matrix_inverse = proc.cut_after(income_and_desembolso_matrix_inverse, targets=[0 for n in range(N)])
 
-def sim_step(capital, deuda, meses_con_prestamo, ingreso, r, n):
-	y = np.zeros([1, n])
-	# y = np.zeros([2, n]) # Line 0: MonteCarlo growth on capital. Line 1: Total (MC + ingresos)
-	y[0][0] = -deuda
-	for i in range(1, n):
-		#y[0][i] = y[0][i-1] + y[0][i-1]* + ingreso 
-		y[0][i] = y[0][i-1] + y[0][i-1]*r - capital + ingreso 
-	return y
-
-def sim_step0(inv, cost, ingreso, r, n):
-	y = np.zeros([1, n]) # y = np.zeros([2, n]) # Line 0: MonteCarlo growth on capital. Line 1: Total (MC + ingresos)
-	y[0][0] = inv #- cost
-	for i in range(1, n):
-		y[0][i] = y[0][i-1] + y[0][i-1]*(r-1) + ingreso 
-	return y
-
-for i in range(mmatrix.shape[0]): # For each row
-	mmatrix[i] = sim00(inversiones[i], ingresos[i], rates_mes[i], MAX_LENGTH, retraso=retrasos[i])
-
-imatrix = mmatrix.copy()
-for i in range(imatrix.shape[0]): # For each row
-	imatrix[i] = sim_paga_solo(inversiones[i], deudas_y_capitales[i], ingresos[i], rates_mes[i], MAX_LENGTH, retraso=retrasos[i])
+#print("M ", months_paid[0])
+#print("Cash spent ", cash_spent[0])
+#print("Deuda y cap ", processed[2]['deuda_y_capital'])
 
 
-# Get intercepts
-#imatrix = np.zeros([4, MAX_LENGTH])
+# Reverse matrix DOES NOT WORK IN GRAPH! WHY?
+inverse_mmatrix = -m[::] + mmatrix[:]
+inverse_mmatrix = mmatrix.copy()
+xs_inverse, ys_inverse = proc.find_x_intercepts_for_y(inverse_mmatrix, targets=[0 for n in range(N)])
+inverse_mmatrix = proc.cut_after(inverse_mmatrix, targets=[0 for n in range(N)])
 
-def get_intercepts(outlays, imatrix): # Problem: This includes valuation.
-	xs = {}
-	ys = {}
-	n = imatrix.shape[1]
-	for k in range(4):
-		i = 0
-		for i in range(0, n+0):
-			if imatrix[k][i] >= 0:
-			#if imatrix[k][i] - outlays[k] >= 0:
-				xs[k] = i
-				ys[k] = imatrix[k][i]
-				break
-	return xs, ys 
+# Shift mmatrix below 0
+# Start points are one step too early....................
+retrasos = [inputs[n]['retraso'] for n in range(N)]
+targets = [processed[n]['cash_spent'] + inputs[n]['inversion'] for n in range(N)]
+xs_invm, ys_invm = proc.find_x_intercepts_for_y(mmatrix, targets=targets)
+for key in ys_invm:
+	ys_invm[key] = 0 - targets[key]
+start_points = [mmatrix[n][0+retrasos[n]] for n in range(N)]
+start_points = np.array(start_points).reshape(N, 1)
+inverse_mmatrix = mmatrix[:] - 2*start_points
+inverse_mmatrix = proc.cut_after(inverse_mmatrix, targets=[0 for n in range(N)])
 
-def get_intercepts2(outlays, imatrix): # Problem: This includes valuation.
-	xs = {}
-	ys = {}
-	n = imatrix.shape[1]
-	for k in range(4):
-		i = 0
-		for i in range(0, n+0):
-			#if imatrix[k][i] >= 0:
-			#if imatrix[k][i] - outlays[k] >= 0:
-			if imatrix[k][i] >= outlays[k]:
-				xs[k] = i
-				ys[k] = imatrix[k][i]
-				break
-	return xs, ys 
+# Matrix for how long it takes to recover cash and capital spent. No compounding included.
+# Then make flipped (- to 0) matrix.
+caps = np.array([inputs[n]['cap_ini'] for n in range(N)]).reshape(N, 1)
+inverse_cap_matrix = -caps[::] + income_only_matrix[:]
+xs_inverse_cap, ys_inverse_cap = proc.find_x_intercepts_for_y(inverse_cap_matrix, targets=[0 for n in range(N)])
+inverse_cap_matrix = proc.cut_after(inverse_cap_matrix, targets=[0 for n in range(N)])
 
-def intercepts(mtrx, targets, retrasos=retrasos):
-	xs = {}
-	ys = {}
-	n = mtrx.shape[1]
-	m = mtrx.shape[0]
+# Matrix for erasing debt.
+debt_matrix = proc.sim_debt(inputs, xs_repay, ys_repay, MAX_LENGTH)
+xs_debt = {}
+for n in range(N):
+	xs_debt.update({ n: xs_repay[n]+inputs[n]['retraso'] })
+ys_debt = ys_repay.copy()
+debt_matrix[:] = 0-debt_matrix
 
-	for k in range(m):
-		if retrasos[k] == 0:
-			start = 0
-		else:
-			start = retrasos[k]
-		for i in range(0, n+0-start):
-			#print(mtrx[k][i])
-			if mtrx[k][i+start] - mtrx[k][0+start] >= targets[k]: # Current - start | mtrx[k][i] - targets[k] <= 0
-				#print("it's bigger")
-				xs[k] = i+start
-				ys[k] = mtrx[k][i+start]
-				break
-	#print(xs); # 350 - 401
-	return xs, ys 
-
-#print(deudas)
-#st.write("Deudas y capitales", deudas_y_capitales)
-#imatrix[0] = sim(invA, outlay_A, ingreso_pesimista_A, 1, amort_mes_A, MAX_LENGTH, meses_con_prestamo_A)
-#imatrix[1] = sim(invA, outlay_A, ingreso_optimista_A, 1, amort_mes_A, MAX_LENGTH, meses_con_prestamo_A)
-#imatrix[2] = sim(invB, outlay_B, ingreso_pesimista_B, 1, amort_mes_B, MAX_LENGTH, meses_con_prestamo_B)
-#imatrix[3] = sim(invB, outlay_B, ingreso_optimista_B, 1, amort_mes_B, MAX_LENGTH, meses_con_prestamo_B)
-#print("InvA + costo: ", invA+costos_prestamos[0])
-x_intercepts, y_intercepts = get_intercepts([outlay_A, outlay_A, outlay_B, outlay_B], imatrix)
-x_intercepts, y_intercepts = intercepts(imatrix, targets=deudas_y_capitales, retrasos=retrasos) # deudas_y_capitales
-x_intercepts0, y_intercepts0 = intercepts(mmatrix, targets=costos_prestamos, retrasos=retrasos)
-#length = imatrix[0].shape[0]
-#print("Length ", length); exit()
-#for i in range(imatrix.shape[0])
-#	x_intercepts = imatrix[i].shape[0]
-#	y_intercepts = imatrix[i][-1]
+# Matrix for displaying how long it takes to recover initial capital spent.
+incomes_only_shifted = proc.shift_sequences(income_only_matrix, shifts=xs_repay)
+#print("Shifted Yes, ", incomes_only_shifted[2])
+incomes_only_shifted_inverse = -caps[:] + incomes_only_shifted[:]
+targets = [0 for n in range(N)]
+xs_recovercap, ys_recovercap = proc.find_x_intercepts_for_y(incomes_only_shifted_inverse, targets=targets)
+#print("Reocver intercepts ", xs_recovercap)
+incomes_only_shifted_inverse = proc.cut_after(incomes_only_shifted_inverse, targets=targets)
 
 
-income_x_intercepts, income_y_intercepts = get_intercepts([outlay_A, outlay_A, outlay_B, outlay_B], mmatrix) # imatrix
-#print(income_x_intercepts); 
-#print(x_intercepts, y_intercepts)
-#exit()
+# 117, not 120. See: print(incomes_only_shifted_inverse[2]); exit()
 
-# Debt remaining
-debt_matrix_A = np.zeros([2, meses_con_prestamo_A])
-debt_matrix_B = np.zeros([2, meses_con_prestamo_B])
-debt_matrix_A[0] = np.array([amort_total_A - -derrames[0]*x - ingreso_pesimista_A*x for x in range(meses_con_prestamo_A)])
-debt_matrix_A[1] = np.array([amort_total_A - -derrames[1]*x - ingreso_optimista_A*x for x in range(meses_con_prestamo_A)])
-debt_matrix_B[0] = np.array([amort_total_B - -derrames[2]*x - ingreso_pesimista_B*x for x in range(meses_con_prestamo_B)])
-debt_matrix_B[1] = np.array([amort_total_B - -derrames[3]*x - ingreso_optimista_B*x for x in range(meses_con_prestamo_B)])
-#print(debt_matrix_A)
+# Matrix for displaying how long it takes to recover initial capital spent, 
+# incorporating monthly savings of 'max_desmobolso_mensual'.
 
-# Debt matrix
-length = meses_con_prestamo_A if meses_con_prestamo_A>meses_con_prestamo_B else meses_con_prestamo_B
-debt_matrix = np.zeros([4, length])
-debts = np.array([deuda_A, deuda_A, deuda_B, deuda_B])
-debts = debts.reshape((4, 1))
-amorts = np.array([amort_mes_A, amort_mes_A, amort_mes_B, amort_mes_B])
-amorts = amorts.reshape((4, 1))
-#print(amorts[0:4,:]); exit()
 
-debt_matrix[0:4,0:1] = debts # First column.
-for i in range(1, length):
-	debt_matrix[0:4,i:i+1] = debt_matrix[0:4,i-1:i] - amorts[0:4,:]
-#print(debt_matrix)
+#Llegar a 0 incl CAP
+
+#just one matrix
+#copy, find targets
+
+#volver a cap_ini in lighter colour
+
+
+##for i in range(mmatrix.shape[0]): # For each row
+	#mmatrix[i] = sim00(inversiones[i], ingresos[i], rates_mes[i], MAX_LENGTH, retraso=retrasos[i])
+##	mmatrix[i] = proc.sim00(inputs[i]['inversion'], inputs[i]['ingreso_pesimista'], inputs[i]['r_mes'], MAX_LENGTH, retraso=inputs[i]['retraso'])
+
+# Find months (x_intercepts) to pay off loan at max_desembolso_mensual
+amorts, x_intercepts, y_intercepts = proc.intercepts_llegar_a_0(inputs, MAX_LENGTH) # {dicts}
+
+for i in range(N):
+	imatrix[i] = proc.sim_llegar_a_0(inputs[i], x_intercepts[i], y_intercepts[i], MAX_LENGTH)
+
+
+costos_prestamos = proc.costos_prestamos(inputs, x_intercepts, y_intercepts)
+_ = [processed[n].update({'costo_prestamo': costos_prestamos[n]}) for n in range(N)]
+#processed[0].update({'costo_prestamo': costos_prestamos[0]})
+
+
+desembolsos = [inputs[i]['max_desembolso_mensual'] for i in range(N)]
+#x_intercepts, y_intercepts
+#123
+###############print(x_intercepts)
+
+###[processed[n].update({'amort': amorts[n]}) for n in range(N)]
+#[processed[n].update({'deuda_y_capital': amorts[n]*x_intercepts[n]+inputs[n]['cap_ini']}) for n in range(N)]
+
+
+retrasos = [inputs[x]['retraso'] for x in range(N)]
+x_intercepts0, y_intercepts0 = proc.intercepts(mmatrix, targets=[processed[x]['costo_prestamo'] for x in range(N)], retrasos=retrasos)
+x_interceptspagasolo, y_interceptspagasolo = proc.intercepts(mmatrix, targets=[processed[x]['deuda_y_capital'] for x in range(N)], retrasos=retrasos)
+del retrasos
+
+
+deudYcap = [processed[n]['deuda_y_capital'] for n in range(N)]
+deudYcap = np.array(deudYcap)
+deudYcap = deudYcap.reshape((N, 1))
+pagar_solo_matrix = mmatrix[:] - deudYcap ####################### WAS HERE
+
+
+
+
+# Costos de oportunidades
+###derrames = [inputs[i]['ingreso_pesimista'] - processed[i]['amort'] for i in range(N)]
+###for i in range(len(derrames)):
+###	if derrames[i] >= 0:
+###		derrames[i] = 0.000000001
+###derrames_totales = [derrames[i]*x_intercepts[i] for i in range(N)]
+#, derrames[1]*inputs[0]['meses_con_prestamo'], derrames[2]*inputs[1]['meses_con_prestamo'], derrames[3]*inputs[1]['meses_con_prestamo']]
+
+
+
+# Oportunidad # ##########################3······ FIX !
+opors = [0, 0, 0, 0]
+###costos_de_oportunidad = [-inputs[n]['inversion'] + derrames_totales[n] for n in range(N)]
+capitales = [inputs[n]['inversion'] for n in range(N)]
+#costos_de_oportunidad = [-inv*(1-portion) + derrame_total for inv, portion, derrame_total in zip([inputs[0]['inversion'], inputs[0]['inversion'], inputs[1]['inversion'], inputs[1]['inversion']], [inputs[0]['porcion'], inputs[0]['porcion'], inputs[1]['porcion'], inputs[1]['porcion']], derrames_totales)]
+#geo = lambda P, r, n: P * ((1-r**n) / (1-r))
+geo = lambda P, r, n: P * (1-r**n) / (1-r)
+#inputs[0]['r_mes']_opor = st.slider("Crecimiento A", 0, 15, 0, 1)
+#r_mes_B_opor = st.slider("Crecimiento B", 0, 15, 0, 1)
+mesesconprest = x_intercepts.copy()
+
+if r_mes_opor == 0:
+	opors = [capitales[n] + mesesconprest[n] * -derrames[n] for n in range(N)]
+else:
+	r = 1 + (r_mes_opor/100)
+	r = np.e**(np.log(r_mes_opor)/12)
+	####opors = [geo(-derrames[n], r, x_intercepts[n]) + capitales[n]*r**x_intercepts[n] for n in range(N)]
+
+#if r_mes_A_opor == 0:
+#	opors[0] = capitales[0] + inputs[0]['meses_con_prestamo'] * -derrames[0]
+#	opors[1] = capitales[1] + inputs[0]['meses_con_prestamo'] * -derrames[1]
+#else:
+#	r_mes_A_opor = 1 + (r_mes_A_opor/100)
+#	r_mes_A_opor = np.e**(np.log(r_mes_A_opor)/12)
+#	opors[0] = geo(-derrames[0], r_mes_A_opor, x_intercepts[0]) + capitales[0]*r_mes_A_opor**x_intercepts[0]
+#	opors[1] = geo(-derrames[1], r_mes_A_opor, x_intercepts[0]) + capitales[1]*r_mes_A_opor**inputs[0]['meses_con_prestamo']
+#if r_mes_B_opor == 0:
+#	opors[2] = capitales[2] + inputs[1]['meses_con_prestamo'] * -derrames[2]
+#	opors[3] = capitales[3] + inputs[1]['meses_con_prestamo'] * -derrames[3]
+#else:
+#	r_mes_B_opor = 1 + (r_mes_B_opor/100)
+#	r_mes_B_opor = np.e**(np.log(r_mes_B_opor)/12)
+#	opors[2] = geo(-derrames[2], r_mes_A_opor, inputs[1]['meses_con_prestamo']) + capitales[2]*r_mes_B_opor**inputs[1]['meses_con_prestamo']
+#	opors[3] = geo(-derrames[3], r_mes_A_opor, inputs[1]['meses_con_prestamo']) + capitales[3]*r_mes_B_opor**inputs[1]['meses_con_prestamo']
+
+
+
+
 
 # Opportunity-cost matrix
-cost_opor_matrix = np.zeros([4, MAX_LENGTH]) # cost_opor_matrix = np.zeros([4, length])
-tapacuotas = np.array(derrames)
-tapacuotas = tapacuotas.reshape((4, 1))
-#capitals = np.array([invA, invA, invB,  invB])
-#capitals = np.array([-inv*(1-portion) for inv, portion in zip([invA, invA, invB, invB], [portionA, portionA, portionB, portionB])])
-caps = -np.array(capitales)
-caps = caps.reshape((4, 1))
-rs = np.array([r_mes_A_opor, r_mes_A_opor, r_mes_B_opor, r_mes_B_opor])
-for i in range(len(rs)):
-	if rs[i] == 0:
-		rs[i] = 1
-rs = rs.reshape((4, 1))
-#rs[:] 
-#print(rs)
-#st.write("tapacuotas: ", tapacuotas)
-cost_opor_matrix[0:4,0:1] = -caps # First column.
-for i in range(1, length):
-	cost_opor_matrix[0:4,i:i+1] = cost_opor_matrix[0:4,i-1:i]*rs + -tapacuotas[0:4,:]
-for i in range(length, MAX_LENGTH):
-	cost_opor_matrix[0:4,i:i+1] = cost_opor_matrix[0:4,i-1:i]*rs
-#print(cost_opor_matrix); exit()
+#cost_opor_matrix = np.zeros([N, MAX_LENGTH]) # cost_opor_matrix = np.zeros([4, length])
+#tapacuotas = np.array([inputs[i]['derrame_hasta_pagar_prestamo'] for i in range(N)])
+#tapacuotas = tapacuotas.reshape((N, 1))
+
+#capitales = [inputs[i]['capital'] for i in range(N)]
+#caps = np.array(capitales)
+#caps = caps.reshape((N, 1))
+#rs = np.array([r_mes_opor for _ in range(N)])
+#for i in range(len(rs)):
+#	if rs[i] == 0:
+#		rs[i] = 1
+#rs = rs.reshape((N, 1))
+
+#cost_opor_matrix[0:N,0:1] = caps # First column.
+#for i in range(1, length):
+#	cost_opor_matrix[0:N,i:i+1] = cost_opor_matrix[0:N,i-1:i]*rs + tapacuotas[0:N,:]
+
+#for i in range(length, MAX_LENGTH):
+#	cost_opor_matrix[0:N,i:i+1] = cost_opor_matrix[0:N,i-1:i]*rs
+
 
 
 # Crop matrix
-mmatrix = mmatrix[0:4,0:meses_display+1]
-cost_opor_matrix = cost_opor_matrix[0:4,0:meses_display+1]
-imatrix = imatrix[0:4,0:meses_display+1]
-#dmatrix = dmatrix[0:4,0:meses_display+1]
-#print(cost_opor_matrix)
+mmatrix = mmatrix[0:N,0:meses_display+1]
+#inverse_mmatrix[:] = -2*inverse_mmatrix[:]
+#inverse_mmatrix[:] = inverse_mmatrix[:]-inverse_mmatrix[:]-inverse_mmatrix[:]
+
+inverse_mmatrix = inverse_mmatrix[0:N,0:proc.len_longest_graph(inverse_mmatrix)+11]
 
 
-# Plotly/Streamlit display graphs
-data = []
-labels = ['A_pes', 'A_opt', 'B_pes', 'B_opt', 'deuda_A', 'deuda_A', 'deuda_B', 'deuda_B', 'op_A1', 'op_A2', 'op_B1', 'op_B2']
+#inverse_mmatrix = inverse_mmatrix[0:N,0:proc.len_longest_graph(inverse_mmatrix)+11]
+imatrix = imatrix[0:N,0:proc.len_longest_graph(imatrix)+11] #imatrix = proc.cut_after_longest(imatrix, extra=10)
+inverse_cap_matrix = inverse_cap_matrix[0:N,0:proc.len_longest_graph(inverse_cap_matrix)+11]
+inverse_income_matrix = inverse_income_matrix[0:N,0:proc.len_longest_graph(inverse_income_matrix)+11]
+incomes_only_shifted_inverse = incomes_only_shifted_inverse[0:N,0:proc.len_longest_graph(incomes_only_shifted_inverse)+11]
+debt_matrix = debt_matrix[0:N,0:proc.len_longest_graph(debt_matrix)+11]
+income_and_desembolso_matrix_inverse = income_and_desembolso_matrix_inverse[0:N,0:proc.len_longest_graph(income_and_desembolso_matrix_inverse)+11]
 
-# Investment graphs
-for l in range(4):
-	line_data = mmatrix[l]
-	for i in range(line_data.shape[0]):
-		d = { 'name': labels[l], 'mes': i, 'y': line_data[i], 'blob': 1 }
-		data.append(d)
-
-# Debt graphs
-for l in range(0,4,2):
-	line_data = debt_matrix[l]
-	for i in range(line_data.shape[0]):
-		d = { 'name': labels[l+4], 'mes': i, 'y': line_data[i], 'blob': 1 }
-########data.append(d)
 
 # Opportunity-cost graphs
-for l in range(4):
+for l in range(N):
+	break
 	line_data = cost_opor_matrix[l]
 	for i in range(line_data.shape[0]):
-		d = { 'name': labels[l+8], 'mes': i, 'y': line_data[i] }
-		data.append(d)
-
-#print(data)
-
-df = pd.DataFrame(data)#; print(df); exit()
-
-import plotly.express as px
-plot = px.line(df, x=df.mes, y=df.y, hover_name=df.name, color='name', #title='Simulador de inversiones', 
-	color_discrete_map={ 'A_pes': 'blue', 'A_opt': 'blue', 'B_pes': 'red', 'B_opt': 'red', 'deuda_A': 'grey', 'deuda_B': 'grey', 'op_B1': 'pink', 'op_B2': 'pink', 'op_A1': 'lightblue', 'op_A2': 'lightblue'}
-	)
-
-#for i in range(len(x_intercepts)):
-for key in x_intercepts0:
-	#print(key, y_intercepts0[key])
-	#if MAX_LENGTH >= x_intercepts0[i]:
-	if key == 0 or key == 1:
-		yshift=8
-	else:
-		yshift=8
-	if x_intercepts0[key] <= mmatrix.shape[1]:
-		plot.add_annotation(x=x_intercepts0[key], y=y_intercepts0[key],
-			text=(f'{x_intercepts0[key]}'),
-			showarrow=False,
-			yshift=yshift)
-
-plot.update_layout(showlegend=True)
+		d = { 'name': cost_opor_labels[l], 'mes': i, 'y': line_data[i] }
+		#data.append(d)
+		if r_mes_opor < 1.00001:
+			pass
+		else:
+			data.append(d)
 
 
+columns = [colA, colB, colC, colD]
+for i in range(len(columns)):
+	with columns[i]:
+		m = meses_display-1
+		m = meses_display
+		#crecimiento_anual_alt = np.e**(np.log(mmatrix[i][m]/(inputs[i]['deuda_y_capital']))/(m/12))
+		#crecimiento_anual_alt = np.e**(np.log(mmatrix[i][m]/(processed[i]['deuda_y_capital']))/(m/12))
+		crecimiento_anual_alt = np.e**(np.log(mmatrix[:,-1][i]/(processed[i]['cash_spent']))/(m/12))
+		st.write(round(crecimiento_anual_alt, 4)) #st.write(round(mmatrix[0][m]), "M")
+		st.write(xs_repay[i], " meses")
+		#st.write(round(-processed[i]['deuda_y_capital']))
 
-# Plot llegar a 0
-data = []
-for l in range(4):
-	line_data = imatrix[l]
-	for i in range(line_data.shape[0]):
-		d = { 'name': labels[l], 'mes': i, 'y': line_data[i], 'blob': 1 }
-		data.append(d)
-
-df = pd.DataFrame(data)#; print(df); exit()
-
-plot0 = px.line(df, x=df.mes, y=df.y, hover_name=df.name, color='name',  
-	color_discrete_map={ 'A_pes': 'blue', 'A_opt': 'blue', 'B_pes': 'red', 'B_opt': 'red', 'deuda_A': 'grey', 'deuda_B': 'grey', 'op_B1': 'pink', 'op_B2': 'pink', 'op_A1': 'lightblue', 'op_A2': 'lightblue'}
-	)
-
-#for i in range(len(x_intercepts)):
-for key in x_intercepts:
-	#print(key, y_intercepts[key])
-	#if MAX_LENGTH >= x_intercepts[i]:
-	if key == 0 or key == 1:
-		yshift=8
-	else:
-		yshift=8
-	if x_intercepts[key] <= imatrix.shape[1]:
-		plot0.add_annotation(x=x_intercepts[key], y=y_intercepts[key],
-			text=(f'{x_intercepts[key]}'),
-			showarrow=False,
-			yshift=yshift)
-
-plot0.update_layout(showlegend=True)
-
-# Oportunidad-matrix
-#dfo = pd.DataFrame(cost_opor_matrix)
-#cost_opor_matrix = cost_opor_matrix.reshape((cost_opor_matrix.shape[1], cost_opor_matrix.shape[0]))
-#oportunity_plot = px.line(cost_opor_matrix)
-#oportunity_plot = px.line(dfo, x=df.mes, y=dfo.y, hover_name=df.name, color='name', title='Simulador de inversiones', 
-#	color_discrete_map={ 'A_pes': 'blue', 'A_opt': 'blue', 'B_pes': 'red', 'B_opt': 'red', 'deuda_A': 'grey', 'deuda_B': 'grey'}
-#	)
-
-
+# Save/restore
 with colA:
-	m = meses_display-1
-	creimiento_anual = np.e**(np.log(mmatrix[0][m]/(deuda_A+capitales[0]))/(m/12))
-	st.write(round(mmatrix[0][m]), "M")
-	st.write(creimiento_anual)
-
-with colB:
-	m = meses_display
-	creimiento_anual = np.e**(np.log(mmatrix[2][m]/(deuda_B+capitales[2]))/(m/12))
-	st.write(round(mmatrix[2][m]), "M")
-	st.write(creimiento_anual)
+	if st.button("Save"):
+		data_to_file = pd.DataFrame(inputs)
+		data_to_file.to_csv("save.csv", index=True)
+	#if st.button("Save2"):
+	#	data_to_file = pd.DataFrame(inputs)
+	#	data_to_file.to_csv("save2.csv", index=True)
 
 with colGraph:
-	tab1, tab2 = st.tabs(['Inv  ', '| PagaSolo '])
+	tab1, tab2, tab3, tab4 = st.tabs(['Inv  ', '| PagarBanco ', '| Rec: Cap ', '| Rec: Todo (!+crecmto!) ']) #PagaSolo
 	with tab1:
-		st.plotly_chart(plot, use_container_width=True)
+		costos = [processed[n]['costo_prestamo'] for n in range(N)]
+		xs_inv, ys_inv = proc.find_x_intercepts_for_y(mmatrix, targets=costos)
 
-		de_bolsillo = []
-		for i in range(len(derrames)):
-			de_bolsillo.append({labels[i]: derrames[i]})
-		#de_bolsillo.append({'A'})
-
-		df = pd.DataFrame(de_bolsillo)
-
-		#st.table(pd.DataFrame(de_bolsillo))
-
-		message  = f'A1: {derrames[0]:.2f}/mes ({derrames_totales[0]:.0f})'
-		st.write(message)
-		st.write(-deuda_A-capitales[0], color="red")
-		message2 = f'B1: {derrames[2]:.2f}/mes ({derrames_totales[2]:.0f})'
-		st.write(message2)
-		st.write(-deuda_B-capitales[2])
+		#disp.plot(inputs, mmatrix, x_intercepts0, y_intercepts0)
+		disp.plot(inputs, mmatrix, {}, {})
 
 	with tab2:
-		st.plotly_chart(plot0, use_container_width=True)
-	#st.plotly_chart(oportunity_plot)
+		#disp.plot_llegar_a_0(inputs, x_intercepts, imatrix, N)
+		#disp.recuperar_capital(inputs, x_intercepts, imatrix, N)
+		disp.plot(inputs, debt_matrix, xs_debt, ys_debt)
+		#_ = [print(key, ys_debt[key]) for key in ys_debt]
 
-	# Cuotas tapadas por nosotros
-	#derrames_totales = [derrames[i]*income_x_intercepts[i] for i in range(len(income_x_intercepts))]
-	#derrames_totales = [d * anos_con_prestamo_A
-	#derrames[i]*income_x_intercepts[i] for i in range(len(income_x_intercepts))]
-	for i in range(len(derrames_totales)):
-		message = (f'{labels[i]} tapar: {derrames[i]:.2f}/mes ({derrames_totales[i]:.0f}/tot)')
-		#st.write(message)
+	with tab3:
+		#disp.plot(inputs, inverse_cap_matrix, xs_inverse_cap, ys_inverse_cap)
+		
+		#disp.plot(inputs, income_and_desembolso_matrix_inverse, xs_inverse_all, ys_inverse_all)
+		disp.plot(inputs, incomes_only_shifted_inverse, xs_recovercap, ys_recovercap)
+		st.write("Incluye ahorros (desembolso) mensuales.")
 
-	#st.write('─────────────────────')
-	for i in range(len(opors)):
-		#st.write(f'Costo de oportunidad: {opors[i]:.0f}')	
-		pass
-	#for i in range(len(costos_de_oportunidad)):
-	#	st.write(f'Costo de oportunidad: {costos_de_oportunidad[i]:.0f}')	
-	#st.write(f'Costo de oportunidad A1: {costo_oportunidad_A1:.0f}')
+	with tab4:
+		# No valuation
+		disp.plot(inputs, inverse_income_matrix, xs_inverse_income, ys_inverse_income)
+		disp.plot(inputs, inverse_mmatrix, xs_invm, ys_invm)
 
+		# Yes valuation
+		#disp.plot(inputs, inverse_mmatrix, xs_inverse, ys_inverse)		
 
-	#print(derrames_totales)
-	# dinero pagado por nosotros
-
-	# pulldown menu: A_pes, ...
+		#disp.plot_llegar_a_0(inputs, x_interceptspagasolo, mmatrix, N)
 
 	# Graph debt remaining
