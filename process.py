@@ -1,0 +1,562 @@
+import math
+import numpy as np
+import streamlit as st
+
+def input_sidebar(name, inversion=0, tasa=1, cap_propio=0, porcion=0, meses_con_prestamo=1, max_desembolso_mensual=0, hide_graph=False):
+	inn = { 'name': name }
+	inversion = st.number_input('Monto', value=inversion, key=f'inversion_{name}')
+	cap_propio = st.number_input('Cap propio', value=cap_propio, key=f'cap_propio_{name}')
+	if cap_propio > inversion:
+		cap_propio = inversion
+	tasa = st.number_input('Tasa bancaria', value=tasa*100, key=f'tasa_{name}') / 100
+	porcion = cap_propio/inversion
+	#st.write("Por ", round(porcion),0)
+	#porcion = st.slider('% prestado', value=int(porcion*100), key=f'porcion_{name}') / 100
+	#principal = inversion * porcion
+	#capital = inversion * (1-porcion)
+	#meses_con_prestamo = st.slider("Meses con préstamo", 1, 180, meses_con_prestamo, 1, key=f'meses_con_prestamo_{name}')
+	#anos_con_prestamo = meses_con_prestamo/12	
+	#i = tasa/12; P = principal; n = meses_con_prestamo
+	#amort_mes = (P*i*(1+i)**n) / ((1+i)**n - 1)
+	#amort_total = amort_mes * meses_con_prestamo
+
+	#deuda_y_capital = amort_total + capital
+	#costo_prestamo = amort_total - principal
+
+	#inn.update({'inversion': inversion, 'tasa': tasa, 'cap_ini': cap_propio, 'capital': capital, 'porcion': porcion, 'principal': principal, 'anos_con_prestamo': anos_con_prestamo, 'meses_con_prestamo': meses_con_prestamo, 'amort_mes': amort_mes, 'amort_total': amort_total, 'deuda_y_capital': deuda_y_capital, 'costo_prestamo': costo_prestamo, 'max_desembolso_mensual': max_desembolso_mensual})
+	inn.update({'inversion': inversion, 
+		'tasa': tasa, 
+		'cap_ini': cap_propio, 
+		'hide_graph': hide_graph
+		#'capital': capital,
+		})#'max_desembolso_mensual': max_desembolso_mensual})
+		#, 'porcion': porcion, 'principal': principal, 'anos_con_prestamo': anos_con_prestamo, 'meses_con_prestamo': meses_con_prestamo, 'amort_mes': amort_mes, 'amort_total': amort_total, 'deuda_y_capital': deuda_y_capital, 'costo_prestamo': costo_prestamo, 'max_desembolso_mensual': max_desembolso_mensual})
+	return inn
+
+def input_cols(name, ingreso=0, retraso=0, valorizacion=0, max_desembolso_mensual=0, hide_graph=False):
+	inn = { 'name': name }
+
+	disabled = True if hide_graph == True else False
+
+	valorizacion = int(valorizacion)
+	valorizacion = st.slider("Valorización", -5, 15, valorizacion, 1, key=f'valorizacion_{name}', disabled=disabled)
+	if valorizacion != 0:
+		v = 1 + (valorizacion/100) # Buggy: 0 becomes 1 ?
+		r_mes = np.e**(np.log(v)/12)
+	else:
+		r_mes = 1
+
+	key = "ingreso_optimista_" + str(name)
+	value = int(ingreso)
+	ingreso_pesimista = st.slider("Ing pesimista K", 0, 8000, value, 100, key=key, disabled=disabled)
+	ingreso_optimista = 0#st.slider("Ingreso optimista K", 0, 5000, 2500, 100)
+	ingreso_pesimista /= 1000
+	ingreso_optimista /= 1000
+
+	retraso = st.slider("Proyecto meses", 0, 36, int(retraso), 6, key=f'retraso_{name}', disabled=disabled)
+
+	#hide_graph = st.checkbox("Hide", value=hide_graph, key=f'visible_{name}', on_change=None, disabled=False)
+
+	inn.update({'valorizacion': valorizacion, 
+		'r_mes': r_mes, 
+		'ingreso_pesimista': ingreso_pesimista, 
+		'ingreso_optimista': ingreso_optimista, 
+		'hide_graph': hide_graph, 
+		#"max_desembolso_mensual": max_desembolso_mensual,
+		'retraso': retraso})
+	
+	return inn
+
+
+def sim0(inv, cap, costo_prestamo, ingreso, r, n, meses_con_prestamo):
+	y = np.zeros([1, n])
+	for i in range(0, n):
+		#y[0][i] = -costo_prestamo + ingreso*i + inv*r**i #- inv#- cap
+		y[0][i] = ingreso*i + inv*r**i #- inv#- cap
+	return y
+
+def sim_main(inputs, MAX_LENGTH, no_growth=False) -> 'mtrx':
+	N = len(inputs)
+	mx = np.zeros([N, MAX_LENGTH])
+
+	for n in range(N):
+		# arange
+		r = inputs[n]['r_mes']
+		inv = inputs[n]['inversion']
+		ingreso = inputs[n]['ingreso_pesimista']
+		retraso = inputs[n]['retraso']
+
+		if retraso == 0:
+			start = 0
+		else:
+			start = retraso
+
+		#y = np.arange(0-retraso, MAX_LENGTH+retraso)
+		#y[:] = ingreso*(i-start) + inv*r**(i-start)
+
+		y = np.zeros([1, MAX_LENGTH])
+		for i in range(0, start):
+				y[0][i] = None
+		if no_growth == True:
+			print("Here")
+			for i in range(start, MAX_LENGTH):
+				# (i+1-start) ? 
+				y[0][i] = ingreso*(i+1-start)# + inv*r**(i+1)#-start)
+		else:
+			for i in range(start, MAX_LENGTH):
+				# (i+1-start) ? 
+				y[0][i] = ingreso*(i+1-start) + inv*r**(i+1)#-start)
+		mx[n] = y
+	return mx
+
+def sim_income_only(inputs, MAX_LENGTH) -> 'mtrx':
+	N = len(inputs)
+	mx = np.zeros([N, MAX_LENGTH])
+
+	for n in range(N):
+		# arange
+		ingreso = inputs[n]['ingreso_pesimista']
+		retraso = inputs[n]['retraso']
+
+		if retraso == 0:
+			start = 0
+		else:
+			start = retraso
+
+		#y = np.arange(0-retraso, MAX_LENGTH+retraso)
+		#y[:] = ingreso*(i-start) + inv*r**(i-start)
+
+		y = np.zeros([1, MAX_LENGTH])
+		for i in range(0, start):
+				y[0][i] = None
+		for i in range(start, MAX_LENGTH):
+			y[0][i] = ingreso*(i+1-start)
+		mx[n] = y
+	return mx
+
+def sim_income_and_desembolso(inputs, MAX_LENGTH) -> 'mtrx':
+	N = len(inputs)
+	mx = np.zeros([N, MAX_LENGTH])
+
+	for n in range(N):
+		# arange
+		desembolso = inputs[n]['max_desembolso_mensual']
+		ingreso = inputs[n]['ingreso_pesimista']
+		retraso = inputs[n]['retraso']
+
+		if retraso == 0:
+			start = 0
+		else:
+			start = retraso
+
+		#y = np.arange(0-retraso, MAX_LENGTH+retraso)
+		#y[:] = ingreso*(i-start) + inv*r**(i-start)
+
+		y = np.zeros([1, MAX_LENGTH])
+		for i in range(0, start):
+				y[0][i] = None
+		for i in range(start, MAX_LENGTH):
+			y[0][i] = ingreso*(i+1-start) + desembolso*(i+1-start)
+		mx[n] = y
+	return mx
+
+def loan_matrix(inputs, length):
+	N = len(inputs)
+	mx = np.zeros((N, length))
+
+	mx[:] = np.arange(1, length+1)
+
+	for n in range(N):
+		i = inputs[n]['tasa']/12 
+		P = inputs[n]['inversion'] - (inputs[n]['cap_ini'] + inputs[n]['max_desembolso_mensual']*inputs[n]['retraso'])
+		#retraso=inputs[n]['retraso']
+		retraso = 0
+		#mx[n][:] = ((P*i*(1+i)**mx[n][:]) / ((1+i)**mx[n][:] - 1)) # Each step is the monthly amort if that step represented the months.
+		mx[n][:] = ((P*i*(1+i)**(mx[n][:]-retraso)) / ((1+i)**(mx[n][:]-retraso) - 1)) * (mx[n][:]-retraso)
+		#mx[n][:] = mx[n][:] - 10
+
+	return mx
+
+def sim_debt(inputs, xs, ys, length):
+	N = len(inputs)
+	mx = np.zeros((N, length))
+	amorts_tot = ys
+	amorts = [ys[n]/xs[n] for n in range(N)]
+	print("Amorts ", amorts)
+	#print("tot ", amorts_tot)
+
+	#mx[:] = np.arange(length, 0, -1)
+
+	for n in range(N):
+		retraso = inputs[n]['retraso']
+		if retraso == 0:
+			start = 0
+		else:
+			start = retraso
+
+		for i in range(0, start):
+			mx[n][i] = None#amorts_tot[n] - i*amorts[i]
+
+		for i in range(start, xs[n]+retraso+1):
+			mx[n][i] = amorts_tot[n] - (i-retraso)*amorts[n]
+
+		mx[n][i:] = None
+
+	for n in range(N):
+		#retraso=inputs[n]['retraso']
+		retraso = 0
+		#mx[n][:] = (mx[n][:]-retraso) * (amorts_tot[n]/xs[n])
+		# Shift left
+	return mx
+
+def calc_min_repay_times(inputs, loan_matrix) -> list:
+	xs = {}
+	ys = {}
+	N = len(inputs)
+
+	for n in range(N):
+		payment = inputs[n]['max_desembolso_mensual'] + inputs[n]['ingreso_pesimista']
+		for i in range(0, loan_matrix.shape[1]):
+			if payment * (i+1) >= loan_matrix[n][i]:
+				xs[n] = i+1
+				ys[n] = loan_matrix[n][i]
+				break
+	return xs, ys
+
+def shift_sequences(mtrx, shifts):
+	ver = mtrx.shape[0]
+	hor = mtrx.shape[1]
+
+	#if np.array(shifts).sum() == 0: return mtrx
+	flag = "donothing"
+	for n in range(ver):
+		if shifts[n] != 0:
+			flag = "continue"
+	if flag == "donothing":
+		return mtrx
+
+	new = np.zeros([ver, hor])
+	for v in range(ver):
+		n_steps = shifts[v]
+		if n_steps > 0:
+			new[v:v+1, 0:n_steps] = None
+			new[v:v+1, n_steps:] = mtrx[v:v+1, 0:hor-n_steps]
+		elif n_steps < 0:
+			n_steps = int(np.sqrt(n_steps**2)) # Make positive.
+			new[v:v+1, 0:hor-n_steps] = mtrx[v:v+1, n_steps:hor]
+			new[v:v+1, hor-n_steps:hor] = None
+		else:
+			new[v] = mtrx[v]
+
+	return new
+
+def shift_left(line, n_steps):
+	ver = 1
+	hor =480# line.shape[1]
+
+	#line = np.array(line)
+
+	new = np.zeros([ver, hor])
+	new[0:1, 0:hor-n_steps] = line[0:1, n_steps:hor]
+	new[0:1, hor-n_steps:hor] = None
+
+	return new
+
+def find_x_intercepts_for_y(mtrx, targets):
+	xs = {}
+	ys = {}
+	ver = mtrx.shape[0]
+	hor = mtrx.shape[1]
+	
+	for v in range(ver):
+		for h in range(hor):
+			#print(f'Is {mtrx[v][h]} > {targets[v]}?')
+			if mtrx[v][h] >= targets[v]:# and math.isnan(mtrx[v][h]) == True:
+				xs[v] = h
+				ys[v] = mtrx[v][h]
+				break
+	return xs, ys 
+
+
+	#x_intercepts.update({0:-44})
+	return amorts, x_intercepts, y_intercepts
+
+def add_list_to_elements_in_matrix(mtrx, addlist):
+	addmtrx = np.array(addlist)
+	addmtrx = addmtrx.reshape(len(addlist), 1)
+	return mtrx[:] + addmtrx
+
+def sim_abono(amort, amort_mes, meses_con_prestamo, MAX_LENGTH, retraso=0):
+	#y = np.zeros([1, meses_con_prestamo+retraso])
+	y = np.zeros([1, MAX_LENGTH])
+
+	if retraso == 0:
+		start = 0
+	else:
+		start = retraso
+
+	y[0:1,0:start] = None
+	y[0:1,start:start+meses_con_prestamo] = [amort - amort_mes*x for x in range(meses_con_prestamo)]
+	y[0:1,start+meses_con_prestamo:MAX_LENGTH] = [None for x in range(MAX_LENGTH-(start+meses_con_prestamo))]
+
+	return y
+
+def cut_after_longest(mtrx, extra=0): # WORKS
+	longest = 0
+	for j in range(mtrx.shape[0]):
+		l = mtrx.shape[1] - 1
+		while l > 0:
+			if math.isnan(mtrx[j][l]) == True:
+				l -= 1
+			else:
+				if longest <= l:
+					longest = l
+				break
+	return mtrx[0:mtrx.shape[0],0:longest+extra]
+
+def len_longest_graph(mtrx): # WORKS
+	longest = 0
+	for j in range(mtrx.shape[0]):
+		l = mtrx.shape[1] - 1
+		while l > 0:
+			if math.isnan(mtrx[j][l]) == True:
+				l -= 1
+			else:
+				if longest <= l:
+					longest = l
+				break
+	return longest
+
+#print(sim_abono(10, 1, 4, 3))
+
+def sim00(inv, ingreso, r, n, retraso=0):
+	y = np.zeros([1, n])
+	if retraso == 0:
+		start = 0
+	else:
+		start = retraso
+		for i in range(0, start):
+			y[0][i] = None
+	for i in range(start, n):
+		y[0][i] = ingreso*(i-start) + inv*r**(i-start)
+	return y
+
+def sim_paga_solo(inv, debt_and_cap, ingreso, r, n, retraso=0, desembolso=0):
+	#print(f"Debt and cap is {debt_and_cap}")
+	y = np.zeros([1, n])
+
+	if retraso == 0:
+		start = 0
+	else:
+		start = retraso
+		for i in range(0, start):
+			y[0][i] = None
+
+	for i in range(start, n): # Could go out of bounds because of i+1 and i+2 ?
+		y[0][i] = -debt_and_cap + ingreso*(i-start) + inv*r**(i-start) - inv
+		#print(y[0][i])
+		if y[0][i] >= 0:#debt_and_cap:
+			#y = y[0:1,0:i+1]
+			y[0][i+1] = -debt_and_cap + ingreso*(i-start) + inv*r**(i-start) - inv
+			y[0:1,0:i+2] = y[0:1,0:i+2]
+			y[0:1,i+1:] = None
+
+			#y[0:1,0:i+1] = y[0:1,0:i+1]
+			#y[0:1,i:] = None
+			break
+	return y
+
+def sim_llegar_a_0(inn, x_intercept, y_intercept, MAX_LENGTH):
+	debt_and_cap = y_intercept
+	#debt_and_cap = 
+
+	ingreso = inn['ingreso_pesimista']
+	cuota = inn['max_desembolso_mensual']
+	inv = inn['inversion']
+	r = inn['r_mes']
+	retraso = inn['retraso']
+
+	y = np.zeros([1, MAX_LENGTH])
+	for i in range(retraso):
+		y[0][i] = -debt_and_cap + i*cuota
+	for i in range(retraso, x_intercept):
+		y[0][i] = -debt_and_cap + i*cuota + i*ingreso
+
+	#print("i ", i)
+	y[0:1,i+1:] = None
+	return y
+
+def cut(mtrx, targets, retrasos):
+	m = mtrx.shape[0]
+	n = mtrx.shape[1]
+	#print(mtrx[0:4,0:2])
+	#y = np.zeros([1, n])
+	#print("retrasos ", retrasos)
+	#print("m ", m)
+	#for j in range(m):
+	#	if retrasos[j] == 0:
+	#		start = 0
+	#	else:
+	#		start = retrasos[j]
+	#		for k in range(0, start):
+	#			mtrx[j][k] = None
+
+	for j in range(m):
+		if retrasos[j] == 0:
+			start = 0
+		else:
+			start = retrasos[j]
+		for i in range(start, n): # Could go out of bounds because of i+1 and i+2 ?
+			if mtrx[j][i] >= targets[j]:
+				mtrx[j:1,i+1:] = None
+				break
+				#mtrx[j:1,i+1:] = None
+	return mtrx
+
+def cut_after(mtrx, targets) -> 'mtrx':
+	ver = mtrx.shape[0]; hor = mtrx.shape[1]
+
+	for v in range(ver):
+		for h in range(hor):
+			if mtrx[v][h] >= targets[v]:
+				mtrx[v][h:] = None
+				#mtrx[v][h] = None
+				break
+	return mtrx
+
+def sim_step(capital, deuda, meses_con_prestamo, ingreso, r, n):
+	y = np.zeros([1, n])
+	# y = np.zeros([2, n]) # Line 0: MonteCarlo growth on capital. Line 1: Total (MC + ingresos)
+	y[0][0] = -deuda
+	for i in range(1, n):
+		#y[0][i] = y[0][i-1] + y[0][i-1]* + ingreso 
+		y[0][i] = y[0][i-1] + y[0][i-1]*r - capital + ingreso 
+	return y
+
+def sim_step0(inv, cost, ingreso, r, n):
+	y = np.zeros([1, n]) # y = np.zeros([2, n]) # Line 0: MonteCarlo growth on capital. Line 1: Total (MC + ingresos)
+	y[0][0] = inv #- cost
+	for i in range(1, n):
+		y[0][i] = y[0][i-1] + y[0][i-1]*(r-1) + ingreso 
+	return y
+
+
+
+# Get intercepts
+#imatrix = np.zeros([4, MAX_LENGTH])
+
+def get_intercepts(outlays, imatrix): # Problem: This includes valuation.
+	xs = {}
+	ys = {}
+	n = imatrix.shape[1]
+	for k in range(4):
+		i = 0
+		for i in range(0, n+0):
+			if imatrix[k][i] >= 0:
+			#if imatrix[k][i] - outlays[k] >= 0:
+				xs[k] = i
+				ys[k] = imatrix[k][i]
+				break
+	return xs, ys 
+
+def get_intercepts2(outlays, imatrix): # Problem: This includes valuation.
+	xs = {}
+	ys = {}
+	n = imatrix.shape[1]
+	for k in range(4):
+		i = 0
+		for i in range(0, n+0):
+			#if imatrix[k][i] >= 0:
+			#if imatrix[k][i] - outlays[k] >= 0:
+			if imatrix[k][i] >= outlays[k]:
+				xs[k] = i
+				ys[k] = imatrix[k][i]
+				break
+	return xs, ys 
+
+def intercepts(mtrx, targets, retrasos=0):
+	xs = {}
+	ys = {}
+	n = mtrx.shape[1]
+	m = mtrx.shape[0]
+
+	for k in range(m):
+		if retrasos[k] == 0: # Try
+			start = 0
+		else:
+			start = retrasos[k]
+		for i in range(0, n+0-start):
+			#print(mtrx[k][i])
+			if mtrx[k][i+start] - mtrx[k][0+start] >= targets[k]: # Current - start | mtrx[k][i] - targets[k] <= 0
+				#print("it's bigger")
+				xs[k] = i+start
+				ys[k] = mtrx[k][i+start]
+				break
+	#print(xs); # 350 - 401
+	#print(xs)
+	return xs, ys 
+
+def intercepts_llegar_a_0(inputs, MAX_LENGTH):
+	N = len(inputs)
+	x_intercepts = {}
+	y_intercepts = {}
+	amorts = [None for _ in range(N)]
+
+	for n in range(N):
+		i = inputs[n]['tasa']/12 
+		P = inputs[n]['inversion']-inputs[n]['cap_ini'] #= inputs[n]['principal']#; n = meses_con_prestamo
+		#mes = 0
+		paid_so_far = 0
+		#monthly = inputs[n]['max_desembolso_mensual'] + inputs[n]['ingreso_pesimista']
+
+		#if inputs[n]['retraso'] > 0:
+		#	paid_so_far += inputs[n]['max_desembolso_mensual']
+		#else:
+		#	paid_so_far += inputs[n]['max_desembolso_mensual'] + inputs[n]['ingreso_pesimista']
+
+		subtract = inputs[n]['retraso']
+		#amort_total_temp = 0
+
+		paid_so_far = inputs[n]['retraso'] * inputs[n]['max_desembolso_mensual']
+
+		#for k in range(1, inputs[n]['retraso']):
+		#	paid_so_far += inputs[n]['max_desembolso_mensual'] #+ inputs[n]['ingreso_pesimista']
+		start = 1+ inputs[n]['retraso']
+		for k in range(start, MAX_LENGTH):
+			P = inputs[n]['inversion']-inputs[n]['cap_ini'] - paid_so_far	
+
+			amort_mes_temp = (P*i*(1+i)**k) / ((1+i)**k - 1)
+			amort_total_temp = amort_mes_temp * k
+			# total = amort_total_temp + P
+
+			if paid_so_far >= amort_total_temp:
+				#mes = k
+				x_intercepts.update({ n: k + 1 }) # + 1
+				y_intercepts.update({ n: amort_total_temp })
+				amorts[n] = amort_mes_temp
+				break
+
+			paid_so_far += inputs[n]['max_desembolso_mensual'] + inputs[n]['ingreso_pesimista']
+
+	#st.write(x_intercepts)
+	#st.write(amorts)
+		#st.write(y_intercepts)
+		#if mes < MAX_LENGTH:
+		#	for k in range(mes, MAX_LENGTH):
+
+	#x_intercepts.update({0:-44})
+	return amorts, x_intercepts, y_intercepts
+
+def costos_prestamos(inputs, x_intercepts, y_intercepts):
+	N = len(inputs)
+	costos_prestamos = [0 for _ in range(N)]
+	for n in range(N):
+		P = inputs[n]['inversion'] - inputs[n]['cap_ini']
+		i = inputs[n]['tasa'] / 12
+		m = x_intercepts[n]
+
+		amort_mes = (P*i*(1+i)**m) / ((1+i)**m - 1)
+		costos_prestamos[n] = amort_mes * x_intercepts[n] - P
+
+	return costos_prestamos
+	#return [y_intercepts]
