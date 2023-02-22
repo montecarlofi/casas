@@ -1,5 +1,5 @@
-,name,inversion,tasa,cap_ini,max_desembolso_mensual,valorizacion,r_mes,ingreso_pesimista,ingreso_optimista,hide_graph,retraso
-0,Norm425:84,425.0,0.1869999999999999,120.0,7,2,1.0016515813019202,3.0,0.0,True,0
-1,J560:127,560.0,0.187,170.0,7,2,1.0016515813019202,4.5,0.0,False,0
-2,Arb640:145,640.0,0.187,200.0,7,2,1.0016515813019202,5.2,0.0,False,12
-3,Norm630:138,620.0,0.187,200.0,7,2,1.0016515813019202,4.8,0.0,False,0
+,name,inversion,tasa,cap_ini,valorizacion,r_mes,ingreso_pesimista,ingreso_optimista,retraso,max_desembolso_mensual,hide_graph
+0,Norm425:84,425.0,0.1869999999999999,120.0,2,1.0016515813019202,3.0,0.0,0,7,True
+1,P&G395,395.0,0.187,120.0,2,1.0016515813019202,3.5,0.0,0,7,False
+2,Yes384:50,384.0,0.187,120.0,3,1.0024662697723037,3.5,0.0,12,7,False
+3,Co320/370,370.0,0.187,120.0,2,1.0016515813019202,3.0,0.0,0,7,False
