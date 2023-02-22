@@ -18,6 +18,8 @@ MAX_LENGTH = 2000
 DECIMALS = 0
 # MONEY_MULTIPLIER = 1000 In process file.
 N = 4
+N_opor = 1
+N_tot = N + N_opor
 NN = {}; _ = [NN.update({ n: n }) for n in range (N)]
 
 # compliance probability (investing the same amount in a non-house-buying situation)
@@ -104,9 +106,10 @@ processed = proc.add_list_to_processed(processed, 'cash_and_income_spent_during_
 income_matrix = proc.income_matrix(inputs, MAX_LENGTH)
 growth_matrix = proc.growth_matrix(inputs, MAX_LENGTH) # Valorización también sobre planos.
 desembolso_matrix = proc.desembolso_matrix(inputs, MAX_LENGTH)
-
-shifts = [inputs[n]['retraso'] for n in NN]
-D_matrix = proc.shift_sequences(desembolso_matrix, shifts)
+#opor_seq = proc.opor_sequence(inputs, MAX_LENGTH)[0]
+opor_matrix = proc.opor_sequence(inputs, r_mes_opor, MAX_LENGTH)
+D_matrix = proc.shift_sequences(desembolso_matrix, shifts=[inputs[n]['retraso'] for n in NN])
+#D_matrix = proc.shift_right(desembolso_matrix, [inputs[n]['retraso'] for n in NN])
 
 zeros = [0 for _ in NN]
 #debt_matrix = proc.debt_matrix(inputs, processed, MAX_LENGTH)
@@ -114,11 +117,18 @@ zeros = [0 for _ in NN]
 # Shift all matrices one step to the right?
 
 # Investments
-mmatrix = income_matrix + growth_matrix
+mmatrix = np.zeros([N+1, MAX_LENGTH]) # +1: Last row is Oportunidad
+mmatrix[0:N] = income_matrix + growth_matrix
 temp = mmatrix[0:N, 0:meses_display].view()
 y_m = temp[:,-1].copy()
 y_m = proc.to_dict(y_m, int_=True)
-x_m = proc.x_intercepts_for_y(mmatrix, targets=y_m)
+x_m = proc.x_intercepts_for_y(mmatrix[0:N], targets=y_m)
+#print(mmatrix.shape[0], mmatrix.shape[1]); 
+#print(opor_matrix.shape[0], opor_matrix.shape[1])
+mmatrix[4] = opor_matrix[0]
+#mmatrix[4:5,0:MAX_LENGTH] = opor_matrix[0]
+#print(opor_seq); exit()
+#print(mmatrix[4])
 
 # Saldar
 smatrix = income_matrix[::] + D_matrix[::]
@@ -152,6 +162,8 @@ pmatrix = income_matrix[:] + growth_matrix[:] - deudasycaps
 y_p = [inputs[n]['inversion'] for n in NN]
 x_p = proc.x_intercepts_for_y(pmatrix, targets=y_p)
 
+# Oportunidad alternativa (bolsa)
+
 
 # Remember that intercept 0 is the first month, intercept 30 is month 31, etc.
 
@@ -163,7 +175,7 @@ x_p = proc.x_intercepts_for_y(pmatrix, targets=y_p)
 
 
 # Crop matrix
-mmatrix = mmatrix[0:N,0:meses_display+1]
+mmatrix = mmatrix[0:N_tot,0:meses_display+1]
 pmatrix = pmatrix[0:N,0:meses_display+1]
 #smatrix = smatrix[0:N,0:meses_display+1]
 
@@ -209,9 +221,15 @@ with colGraph:
 	tab1, Banco, BancoCap, PagaSolo = st.tabs(['Inv  ', '| Banco ', '| Banco+Cap ','| Paga solo ']) #PagaSolo
 	with tab1:
 		costos = [processed[n]['costo_prestamo'] for n in range(N)]
-		xs_inv, ys_inv = proc.find_x_intercepts_for_y(mmatrix, targets=costos)
+		xs_inv, ys_inv = proc.find_x_intercepts_for_y(mmatrix[0:N], targets=costos)
 
-		disp.plot(inputs, mmatrix, x_m, y_m, show_labels=True, labels=y_m)
+		#disp.plot(inputs, mmatrix, x_m, y_m, show_labels=True, labels=y_m)
+		names = [inputs[n]['name'] for n in NN]
+		names.append("Opor")
+		hides = [inputs[n]['hide_graph'] for n in NN]
+		hides.append(False)
+		#st.write(mmatrix[0])
+		disp.plot2(mmatrix, x_m, y_m, names=names, hides=hides, show_labels=True, labels=y_m)
 
 	with Banco:
 		disp.plot(inputs, smatrix, x_s, zeros, labels=x_s)

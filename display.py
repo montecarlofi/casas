@@ -96,6 +96,59 @@ def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 	plot.update_layout(showlegend=True)
 	st.plotly_chart(plot, use_container_width=True)
 
+def plot2(mtrx, xs, ys, names=None, hides=None, colours=None, show_labels=True, labels=None):
+	N = mtrx.shape[0]
+	print("Lines ", N)
+	if names == None:
+		names = [i for i in range(N)]
+	if hides == None:
+		hides = [False for i in range(N)]
+
+	data = []
+	for l in range(N):
+		line_data = mtrx[l]
+		for i in range(line_data.shape[0]):
+			d = { 'name': names[l], 'mes': i, 'y': line_data[i] }
+			#if inputs[l]['ingreso_pesimista'] == 0:
+			if hides[l] == True:
+				pass
+			else:
+				data.append(d)
+				#print(d)
+
+	df = pd.DataFrame(data)
+
+	if colours == None:
+		colours = ['green', 'blue', 'orange', 'red', 'lightgrey', 'lightgreen', 'lightblue', 'rgb(254, 217, 166)', 'pink']
+	colourmap = {}
+	for c in range(len(names)):
+		colourmap.update({
+			names[c]: colours[c]
+		})
+
+	plot = px.line(df, x=df.mes, y=df.y, hover_name=df.name, color='name',  
+		color_discrete_map=colourmap
+		)
+
+	for key in xs:
+		#print(key, ys[key])
+		#if MAX_LENGTH >= x_intercepts[i]:
+		if key == 0 or key == 1:
+			yshift=8
+		else:
+			yshift=8
+		#print("Key: ", key)
+		if hides[key] == False or show_labels == False:
+			if xs[key] <= mtrx.shape[1]:
+				plot.add_annotation(x=xs[key], y=ys[key],#y_intercepts[key],
+					text=(f'{labels[key]}'),
+					showarrow=False,
+					yshift=yshift)
+
+	plot.update_yaxes(visible=True, showticklabels=True)
+	plot.update_layout(showlegend=True)
+	st.plotly_chart(plot, use_container_width=True)
+
 def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 	names = [inputs[n]['name'] for n in range(len(inputs))]
 	names.extend(names)

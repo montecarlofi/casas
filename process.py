@@ -211,6 +211,19 @@ def growth_matrix(inputs, length): # WORKS
 
 	return mx
 
+def opor_sequence(inputs, r, length):
+	# a * (1-r**N) / (1-r)
+	N = len(inputs)
+	mx = np.zeros((N, length))
+	ds = np.array([inputs[n]['max_desembolso_mensual'] for n in range(N)]).reshape(N, 1)
+	#rs = np.array([inputs[n]['r_mes'] for n in range(N)]).reshape(N, 1)
+	rs = np.array([r for _ in range(N)]).reshape(N, 1)
+	invs = np.array([inputs[n]['cap_ini'] for n in range(N)]).reshape(N, 1)
+	
+	mx[:] = np.arange(1, length+1)
+	mx[:] = invs*rs**mx + ds*(1-rs**mx)/(1-rs)
+	return mx
+
 def loan_matrix(inputs, length):
 	N = len(inputs)
 	mx = np.zeros((N, length))
@@ -301,7 +314,7 @@ def shift_sequences(mtrx, shifts):
 
 	return new
 
-def shift_right(mx, list_): # Works elegantly.
+def shift_right(mx, list_): # .......?............... No work. elegantly.
 	N = mx.shape[0]
 	w = mx.shape[1]
 	shifts = np.array(list_).reshape(N, 1)
