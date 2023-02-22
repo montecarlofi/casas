@@ -235,13 +235,13 @@ def opor_sequence(inputs, untils, r, length):
 	ranger = np.arange(1, length+1)
 
 	for i in range(N):
-		point = untils[i]; st.write("Point ", point)
+		point = untils[i]#; st.write("Point ", point)
 		m = mx[i:i+1,0:point]
 		mx[i:i+1,0:point] = invs[i]*rs[i]**m + ds[i]*(1-rs[i]**m)/(1-rs[i])
 		#mx[i:i+1,0:point] = invs*rs[i]**mx[i:i+1,0:point] + ds[i]*(1-rs[i]**mx[i:i+1,0:point])/(1-rs[i])
 		capital = mx[i:i+1,point:point+1][0]
 		capital = mx[i][point-1]
-		st.write("Capital ", capital)
+		#st.write("Capital ", capital)
 		mx[i:i+1,point:length] = capital*rs[i]**ranger[0:length-point]
 	return mx
 	#mx[:] = invs*rs**mx + ds*(1-rs**mx)/(1-rs)
