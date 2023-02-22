@@ -107,7 +107,6 @@ income_matrix = proc.income_matrix(inputs, MAX_LENGTH)
 growth_matrix = proc.growth_matrix(inputs, MAX_LENGTH) # Valorización también sobre planos.
 desembolso_matrix = proc.desembolso_matrix(inputs, MAX_LENGTH)
 #opor_seq = proc.opor_sequence(inputs, MAX_LENGTH)[0]
-opor_matrix = proc.opor_sequence(inputs, r_mes_opor, MAX_LENGTH)
 D_matrix = proc.shift_sequences(desembolso_matrix, shifts=[inputs[n]['retraso'] for n in NN])
 #D_matrix = proc.shift_right(desembolso_matrix, [inputs[n]['retraso'] for n in NN])
 
@@ -125,7 +124,6 @@ y_m = proc.to_dict(y_m, int_=True)
 x_m = proc.x_intercepts_for_y(mmatrix[0:N], targets=y_m)
 #print(mmatrix.shape[0], mmatrix.shape[1]); 
 #print(opor_matrix.shape[0], opor_matrix.shape[1])
-mmatrix[4] = opor_matrix[0]
 #mmatrix[4:5,0:MAX_LENGTH] = opor_matrix[0]
 #print(opor_seq); exit()
 #print(mmatrix[4])
@@ -163,6 +161,8 @@ y_p = [inputs[n]['inversion'] for n in NN]
 x_p = proc.x_intercepts_for_y(pmatrix, targets=y_p)
 
 # Oportunidad alternativa (bolsa)
+opor_matrix = proc.opor_sequence(inputs, x_p, r_mes_opor, MAX_LENGTH)
+mmatrix[4] = opor_matrix[0]
 
 
 # Remember that intercept 0 is the first month, intercept 30 is month 31, etc.
@@ -245,8 +245,9 @@ with colGraph:
 
 		#disp.plot(inputs, rmatrix0, x_rc0, y_rc1, labels=x_rc0)
 
-		pmatrix = pmatrix[:,:]
+		#pmatrix = pmatrix[:,:]
 		#pmatrix = pmatrix[0:N,0:proc.len_longest_graph(pmatrix)+11]
+		#print("Targets ", y_p)
 		disp.plot(inputs, pmatrix, x_p, y_p, labels=x_p)
 		st.write("-Costo de préstamo + valor y producción de la inversión.")
 #st.write(processed[0:2])

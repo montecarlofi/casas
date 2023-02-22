@@ -211,18 +211,41 @@ def growth_matrix(inputs, length): # WORKS
 
 	return mx
 
-def opor_sequence(inputs, r, length):
+def opor_sequence(inputs, untils, r, length):
 	# a * (1-r**N) / (1-r)
 	N = len(inputs)
 	mx = np.zeros((N, length))
+	if r == 1:
+		mx[::] = None
+		return mx[::]
+
 	ds = np.array([inputs[n]['max_desembolso_mensual'] for n in range(N)]).reshape(N, 1)
 	#rs = np.array([inputs[n]['r_mes'] for n in range(N)]).reshape(N, 1)
 	rs = np.array([r for _ in range(N)]).reshape(N, 1)
 	invs = np.array([inputs[n]['cap_ini'] for n in range(N)]).reshape(N, 1)
+	#us = np.array([u for u in range(N)]).reshape(N, 1)
+
+
+	ds = [inputs[n]['max_desembolso_mensual'] for n in range(N)]
+	#rs = np.array([inputs[n]['r_mes'] for n in range(N)]).reshape(N, 1)
+	rs = [r for _ in range(N)]
+	invs = [inputs[n]['cap_ini'] for n in range(N)]
 	
 	mx[:] = np.arange(1, length+1)
-	mx[:] = invs*rs**mx + ds*(1-rs**mx)/(1-rs)
+	ranger = np.arange(1, length+1)
+
+	for i in range(N):
+		point = untils[i]; st.write("Point ", point)
+		m = mx[i:i+1,0:point]
+		mx[i:i+1,0:point] = invs[i]*rs[i]**m + ds[i]*(1-rs[i]**m)/(1-rs[i])
+		#mx[i:i+1,0:point] = invs*rs[i]**mx[i:i+1,0:point] + ds[i]*(1-rs[i]**mx[i:i+1,0:point])/(1-rs[i])
+		capital = mx[i:i+1,point:point+1][0]
+		capital = mx[i][point-1]
+		st.write("Capital ", capital)
+		mx[i:i+1,point:length] = capital*rs[i]**ranger[0:length-point]
 	return mx
+	#mx[:] = invs*rs**mx + ds*(1-rs**mx)/(1-rs)
+	#return mx
 
 def loan_matrix(inputs, length):
 	N = len(inputs)
