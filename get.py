@@ -13,6 +13,16 @@ def read_data(N=None):
 		caps_ini = list(d['cap_ini'])
 	except Exception as e:
 		caps_ini = capitales.copy()
+
+	try:
+		r_highs = list(d['r_high'])
+	except Exception as e:
+		r_highs = [2 for _ in range(N)]
+	
+	try:
+		shifts = list(d['shift'])
+	except Exception as e:
+		shifts = [0 for _ in range(N)]
 	
 	#porciones = list(d['porcion'])
 	#principales = list(d['principal'])
@@ -47,10 +57,12 @@ def read_data(N=None):
 			#'porcion': porciones[i],
 			#'principal': principales[i],
 			'valorizacion': valorizaciones[i],
+			'r_high': r_highs[i],
 			'r_mes': rs_meses[i],
 			'ingreso_pesimista': ingresos_pesimistas[i],
 			'ingreso_optimista': ingresos_optimistas[i],
 			'retraso': retrasos[i],
+			'shift': shifts[i],
 			'max_desembolso_mensual': max_desembolsos_mensual[i],
 			'hide_graph': hide_graphs[i]
 

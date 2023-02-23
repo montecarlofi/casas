@@ -56,7 +56,7 @@ def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 	for l in range(N):
 		line_data = mtrx[l]
 		for i in range(line_data.shape[0]):
-			d = { 'name': inputs[l]['name'], 'mes': i, 'y': line_data[i], 'blob': 1 }
+			d = { 'name': inputs[l]['name'], 'mes': i, 'y': line_data[i], 'loan_repay_time': 1 }
 			#if inputs[l]['ingreso_pesimista'] == 0:
 			if inputs[l]['hide_graph'] == True:
 				pass
@@ -119,7 +119,7 @@ def plot2(mtrx, xs, ys, names=None, hides=None, colours=None, show_labels=True, 
 	df = pd.DataFrame(data)
 
 	if colours == None:
-		colours = ['green', 'blue', 'orange', 'red', 'lightgrey', 'lightgreen', 'lightblue', 'rgb(254, 217, 166)', 'pink']
+		colours = ['green', 'blue', 'orange', 'red', 'lightgreen', 'lightblue', 'rgb(254, 217, 166)', 'pink']
 	colourmap = {}
 	for c in range(len(names)):
 		colourmap.update({

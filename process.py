@@ -1,10 +1,25 @@
 import math
 import numpy as np
 import streamlit as st
+import pandas as pd
 
 MONEY_MULTIPLIER = 1000
 
 def get_columns(N):
+	#Columns = []
+	#a, a0, b, b0, c, c0, d = st.columns([2, 1, 2, 1, 2, 1, 2])
+	#Columns.append(a); Columns.append(b); Columns.append(c); Columns.append(d); 
+	#colGraph = 0
+	#return Columns, colGraph
+	# Works:
+	colGraph, cola00, cola, cola0, colb, colb0, colc, colc0, cold = st.columns([9, 1, 2, 1, 2, 1, 2, 1, 2])
+	Columns = []
+	Columns.append(cola)
+	Columns.append(colb)
+	Columns.append(colc)
+	Columns.append(cold)
+	return Columns, colGraph
+	# Works:
 	colsizes = []
 	_ = [(colsizes.append(2), colsizes.append(1)) for x in range(N)]
 	colsizes.append(np.array(colsizes).sum())
@@ -43,6 +58,8 @@ def input_cols(inn):
 	#st.write(name)
 	disabled = True if inn['hide_graph'] == True else False
 
+	R_high = int(inn['r_high'])
+	#R_high = st.slider("High valoriz.", -5, 15, R_high, 1, key=f"high_{inn['name']}", disabled=disabled)
 	valorizacion = int(inn['valorizacion'])
 	valorizacion = st.slider("Valorización", -5, 15, valorizacion, 1, key=f"valorizacion_{inn['name']}", disabled=disabled)
 	if valorizacion != 0:
@@ -50,6 +67,12 @@ def input_cols(inn):
 		r_mes = np.e**(np.log(v)/12)
 	else:
 		r_mes = 1
+
+	if R_high != 0:
+		v = 1 + (R_high/100) # Buggy: 0 becomes 1 ?
+		r_high = np.e**(np.log(v)/12)
+	else:
+		r_high = 1
 
 	key = "ingreso_optimista_" + str(inn['name'])
 	value = int(inn['ingreso_pesimista']*MONEY_MULTIPLIER)
@@ -59,17 +82,22 @@ def input_cols(inn):
 	ingreso_optimista /= MONEY_MULTIPLIER
 
 	retraso = st.slider("Proyecto meses", 0, 36, int(inn['retraso']), 6, key=f'retraso_{inn["name"]}', disabled=disabled)
+	#shift = st.slider("Mover", 0, 96, int(inn['shift']), 1, key=f'shift_{inn["name"]}', disabled=disabled)
+	shift = st.number_input('Mover', 0, 240, int(inn['shift']), key=f'shift_{inn["name"]}', disabled=disabled)
 
 	#hide_graph = st.checkbox("Hide", value=hide_graph, key=f'visible_{name}', on_change=None, disabled=False)
 	#st.write("rate ", r_mes**12)
 	inn.update({'name': inn['name'],
 		'valorizacion': valorizacion, 
 		'r_mes': r_mes, 
+		#'r_high': R_high, 
 		'ingreso_pesimista': ingreso_pesimista, 
 		'ingreso_optimista': ingreso_optimista, 
 		'hide_graph': inn['hide_graph'], 
 		#"max_desembolso_mensual": max_desembolso_mensual,
-		'retraso': retraso})
+		'retraso': retraso,
+		'shift': shift
+		})
 	
 	return inn
 
@@ -211,6 +239,54 @@ def growth_matrix(inputs, length): # WORKS
 
 	return mx
 
+def growth_matrix_curva(inputs, length):
+	N = len(inputs)
+	mx = np.zeros((N, length))
+	
+	#mx[:] = np.arange(1, length+1)
+	rs = np.array([inputs[n]['r_mes'] for n in range(N)]).reshape(N, 1)
+	r_highs = np.array([inputs[n]['r_high'] for n in range(N)]).reshape(N, 1)
+	invs = np.array([inputs[n]['inversion'] for n in range(N)]).reshape(N, 1)
+	print("rs ", rs, " r_highs ", r_highs)
+	slopes_10_years = [np.e**(np.log(rs[i]/r_highs[i])/120) for i in range(N)] # Downtrend if high is higher than r_mes.
+	slopes_10_years = np.array(slopes_10_years).reshape(N, 1)
+	s = slopes_10_years
+	slope_matrix = np.zeros([N, 120])
+
+	slope_matrix[:,0] = slopes_10_years[0]
+	for i in range(1, 120):
+		slope_matrix[:,i] = slope_matrix[:,i-1] * s[:,0] # This is the growth/decline of the rate itself.
+
+		#slope_matrix[0:N,i*12:(i+1)*12] = slopes_10_years[i]
+	print(slope_matrix)
+
+	rates = np.ones([N, 120])
+	rates[:] = rs[:]
+
+	mx = np.zeros([N, length])
+	mx[:,0] = invs[:,0]*slope_matrix[:,0]
+	for i in range(1, 120):
+		mx[:,i] = mx[:,i-1] * slope_matrix[:,i]
+	#print("mx ", mx[:,119]); exit()
+	ranger = np.arange(1, -120+length+1)
+	mx[:,120:length-120] = mx[:,119] * rs[:] ** ranger[:]
+
+
+	return mx
+
+def curva_matrix(curva_de_aplanamiento, N): # Returns N x 120 matrix UNFINISHED
+	curva = curva_de_aplanamiento
+	mx = np.zeros([N, len(curva)])
+
+	r_seq = np.zeros([N, length]) # Seq (1-dim matrix) or matrix?
+	for i in range(len(curva_de_aplanamiento)):
+		c = curva_de_aplanamiento[i]
+		c = np.e**(np.log(1+c/100)/12)
+		p = (i+1)*12
+		r_seq[0:N,i*12:p] = c
+	r_seq[0:N,p:] = rs
+	mx[::] = invs*r_seq**mx
+
 def opor_sequence(inputs, untils, r, length):
 	# a * (1-r**N) / (1-r)
 	N = len(inputs)
@@ -246,6 +322,24 @@ def opor_sequence(inputs, untils, r, length):
 	return mx
 	#mx[:] = invs*rs**mx + ds*(1-rs**mx)/(1-rs)
 	#return mx
+
+def opor_sequence2(inputs, untils, r, length): # Returns according to each desembolso, but─NOTE─does not shift by starting points.
+	# a * (1-r**N) / (1-r)
+	N = len(inputs)
+	mx = np.zeros((N, length))
+	if r == 1:
+		mx[::] = None
+		return mx[::]
+
+	ds = np.array([inputs[n]['max_desembolso_mensual'] for n in range(N)]).reshape(N, 1)
+	#rs = np.array([inputs[n]['r_mes'] for n in range(N)]).reshape(N, 1)
+	rs = np.array([r for _ in range(N)]).reshape(N, 1)
+	invs = np.array([inputs[n]['cap_ini'] for n in range(N)]).reshape(N, 1)
+	#us = np.array([u for u in range(N)]).reshape(N, 1)
+	
+	mx[:] = np.arange(1, length+1)
+	mx[:] = invs*rs**mx + ds*(1-rs**mx)/(1-rs)
+	return mx
 
 def loan_matrix(inputs, length):
 	N = len(inputs)
@@ -744,3 +838,20 @@ def cash_and_income_spent_during_loan_repayment(inputs, processed):
 def cash_and_capital_spent(inputs, processed):
 	N = len(inputs)
 	return [inputs[n]['retraso'] * inputs[n]['max_desembolso_mensual'] + processed[n]['loan_repay_time'] * inputs[n]['max_desembolso_mensual'] + inputs[n]['cap_ini'] for n in range(N)]
+
+def make_table(names, hides, mtrx, N):
+	#N = mtrx.shape[0]
+	data = []
+	line_data = mtrx[0]
+	length = line_data.shape[0]
+	#print("Length ", length)
+	for l in range(N):
+		line_data = mtrx[l]
+		for i in range(line_data.shape[0]):
+			d = { 'name': names[l], 'mes': i, 'y': line_data[i], 'blob': 1 }
+			if hides[l] == True:
+				pass
+			else:
+				data.append(d)
+
+	return pd.DataFrame(data)
