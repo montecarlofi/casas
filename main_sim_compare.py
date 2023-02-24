@@ -13,13 +13,14 @@ import pandas as pd; #import get_data
 import process as proc
 import get as get
 import display as disp
+disp.streamlit_hide(st.markdown)
 
 STRANGE_CONSTANT = 0.0000001
 MAX_LENGTH = 2000
 DECIMALS = 0
 # MONEY_MULTIPLIER = 1000 In process file.
 N = 4
-N_opor = N
+N_opor = 1
 N_tot = N + N_opor
 NN = {}; _ = [NN.update({ n: n }) for n in range (N)]
 
@@ -42,11 +43,19 @@ ColContainer = st.container()
 #Expander = st.expander('Vars')
 ContHideButton = st.container()
 #Columns2, _ = proc.get_columns(N)
+#SaveRestoreContainer = st.container()
+# Save/restore
+file = "save.csv"
+#with SaveRestoreContainer: #with Columns[0]:
+#	if st.button("Restore"):
+#		file = "save.csv"
+#	if st.button("Restore II"):
+#		file = "save2.csv"
 
-inputs = get.read_data()[0:N]
+inputs = get.read_data(file)[0:N]
 processed = [{} for i in range(N)]
 
-readdata = get.read_data()[0:N]
+#readdata = get.read_data()[0:N]
 colnames = [inputs[i]['name'] for i in range(N)]
 #ingresos = [MONEY_MULTIPLIER*inputs[i]['ingreso_pesimista'] for i in range(N)]
 inversiones = [inputs[i]['inversion'] for i in range(N)]
@@ -83,7 +92,7 @@ with st.sidebar:
 	st.markdown("""---""") # Make individual
 	#_ = [inputs[n].update({ 'max_desembolso_mensual': st.number_input('Max desembolso mensual', 0, 30, max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')}) for n in NN]
 	for n in NN:
-		number = st.number_input('Max desembolso mensual', 0, 30, value=max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')
+		number = st.number_input('Max desembolso mensual', 0.0, 30.0, value=max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')
 		#number = st.number_input('Tasa bancaria', value=inn['tasa']*100, key=f'tasa_{name}', disabled=disabled) / 100
 		if  number == 0 or number == None:
 			number = STRANGE_CONSTANT
@@ -96,6 +105,9 @@ with st.sidebar:
 	meses_display = 480
 
 	st.markdown("""---""")
+	opor_cap_ini = st.number_input('Inversión alt. cap.', 0.0, 1000.0, key='opor_cap_ini')
+	#opor_cap_ini = st.number_input('Inversión alt.', 0, 100, key='opor_cap_ini')
+	opor_saving = st.number_input('Inversión alt.', 0, 100, key='opor_saving')
 	r_mes_opor = st.slider("Crec. opor. alt.", -5, 10, 0, 1)
 	r_mes_opor = 1 + (r_mes_opor/100)
 	r_mes_opor = np.e**(np.log(r_mes_opor)/12)
@@ -201,11 +213,12 @@ x_p = proc.x_intercepts_for_y(pmatrix, targets=y_p)
 # Oportunidad alternativa (bolsa)
 #opor_matrix = proc.opor_sequence(inputs, r_mes_opor, MAX_LENGTH, untils=x_duo) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
 opor_matrix = proc.opor_sequence2(inputs, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
+#opor_matrix = proc.opor_sequence3(opor_cap_ini, opor_saving, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
 opor_matrix = proc.shift_sequences(opor_matrix, shifts=[inputs[n]['shift'] for n in NN])
 mmatrix[4] = opor_matrix[0]
-mmatrix[5] = opor_matrix[1]
-mmatrix[6] = opor_matrix[2]
-mmatrix[7] = opor_matrix[3]
+#mmatrix[5] = opor_matrix[1]
+#mmatrix[6] = opor_matrix[2]
+#mmatrix[7] = opor_matrix[3]
 
 
 # Remember that intercept 0 is the first month, intercept 30 is month 31, etc.
@@ -242,11 +255,14 @@ for i in range(len(Columns)):
 		###st.write(xs_repay[i], " meses")
 		#st.write(round(-processed[i]['deuda_y_capital']))
 
-# Save/restore
+#with SaveRestoreContainer: 
 with Columns[0]:
 	if st.button("Save"):
 		data_to_file = pd.DataFrame(inputs)
 		data_to_file.to_csv("save.csv", index=True)
+	#if st.button("Save II"):
+	#	data_to_file = pd.DataFrame(inputs)
+	#	data_to_file.to_csv("save2.csv", index=True)
 
 #with SuperLeft:
 with colGraph:
@@ -257,9 +273,9 @@ with colGraph:
 
 		names = [inputs[n]['name'] for n in NN]
 		names.append("Opor")
-		names.append("Opor2")
-		names.append("Opor3")
-		names.append("Opor4")
+		#names.append("Opor2")
+		#names.append("Opor3")
+		#names.append("Opor4")
 		hides = [inputs[n]['hide_graph'] for n in NN]
 		hides.extend(hides)
 		#hides.append(False)

@@ -344,6 +344,48 @@ def opor_sequence2(inputs, r, length, until=120): # Returns according to each de
 	mx[:,until:] = a*rs**v
 	return mx
 
+def opor_sequence3(cap_ini, opor_saving, r, length, until=120): # Returns according to each desembolso, but─NOTE─does not shift by starting points.
+	# a * (1-r**N) / (1-r)
+	N = 1
+	mx = np.zeros((N, length))
+	ranger = np.zeros((N, length))
+	#ds = np.array([opor_saving for n in range(N)]).reshape(N, 1)
+	#rs = np.array([inputs[n]['r_mes'] for n in range(N)]).reshape(N, 1)
+	#invs = np.array([cap_ini for n in range(N)]).reshape(N, 1)
+	ds = opor_saving
+	rs = r
+	invs = cap_ini
+	
+	ranger[:] = np.arange(1, length+1)
+	v = ranger[:,0:until].view()
+	mx[:,0:until] = invs*rs**v + ds*(1-rs**v)/(1-rs)
+
+	v = ranger[:,0:length-until].view()
+	a = np.array(mx[:,until-1]).reshape(N, 1)
+	mx[:,until:] = a*rs**v
+	return mx
+
+def opor_sequence3(cap_ini, opor_saving, r, length, until=120): # Returns according to each desembolso, but─NOTE─does not shift by starting points.
+	# a * (1-r**N) / (1-r)
+	N = 1
+	mx = np.zeros((N, length))
+	ranger = np.zeros((N, length))
+	#ds = np.array([opor_saving for n in range(N)]).reshape(N, 1)
+	#rs = np.array([inputs[n]['r_mes'] for n in range(N)]).reshape(N, 1)
+	#invs = np.array([cap_ini for n in range(N)]).reshape(N, 1)
+	ds = opor_saving
+	rs = r
+	invs = cap_ini
+	
+	ranger[:] = np.arange(1, length+1)
+	v = ranger[:,0:until].view()
+	mx[:,0:until] = invs*rs**v + ds*(1-rs**v)/(1-rs)
+
+	v = ranger[:,0:length-until].view()
+	a = np.array(mx[:,until-1]).reshape(N, 1)
+	mx[:,until:] = a*rs**v
+	return mx
+
 def loan_matrix(inputs, length):
 	N = len(inputs)
 	mx = np.zeros((N, length))

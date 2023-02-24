@@ -1,7 +1,10 @@
 import pandas as pd; #import get_data
 
-def read_data(N=None):
-	d = pd.read_csv("save.csv")
+def read_data(file=None, N=None):
+	if file == None:
+		d = pd.read_csv("save.csv")
+	else:
+		d = pd.read_csv(file)
 	names = list(d['name'])
 
 	N = len(names); print("N ", N)
