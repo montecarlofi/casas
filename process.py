@@ -3,6 +3,7 @@ import numpy as np
 import streamlit as st
 import pandas as pd
 
+#STRANGE_CONSTANT = 0.0000001
 MONEY_MULTIPLIER = 1000
 
 def get_columns(N):
@@ -287,7 +288,7 @@ def curva_matrix(curva_de_aplanamiento, N): # Returns N x 120 matrix UNFINISHED
 	r_seq[0:N,p:] = rs
 	mx[::] = invs*r_seq**mx
 
-def opor_sequence(inputs, untils, r, length):
+def opor_sequence(inputs, r, length, untils):
 	# a * (1-r**N) / (1-r)
 	N = len(inputs)
 	mx = np.zeros((N, length))
@@ -323,22 +324,24 @@ def opor_sequence(inputs, untils, r, length):
 	#mx[:] = invs*rs**mx + ds*(1-rs**mx)/(1-rs)
 	#return mx
 
-def opor_sequence2(inputs, untils, r, length): # Returns according to each desembolso, but─NOTE─does not shift by starting points.
+def opor_sequence2(inputs, r, length, until=120): # Returns according to each desembolso, but─NOTE─does not shift by starting points.
 	# a * (1-r**N) / (1-r)
 	N = len(inputs)
 	mx = np.zeros((N, length))
-	if r == 1:
-		mx[::] = None
-		return mx[::]
-
+	ranger = np.zeros((N, length))
 	ds = np.array([inputs[n]['max_desembolso_mensual'] for n in range(N)]).reshape(N, 1)
 	#rs = np.array([inputs[n]['r_mes'] for n in range(N)]).reshape(N, 1)
 	rs = np.array([r for _ in range(N)]).reshape(N, 1)
 	invs = np.array([inputs[n]['cap_ini'] for n in range(N)]).reshape(N, 1)
 	#us = np.array([u for u in range(N)]).reshape(N, 1)
 	
-	mx[:] = np.arange(1, length+1)
-	mx[:] = invs*rs**mx + ds*(1-rs**mx)/(1-rs)
+	ranger[:] = np.arange(1, length+1)
+	v = ranger[:,0:until].view()
+	mx[:,0:until] = invs*rs**v + ds*(1-rs**v)/(1-rs)
+
+	v = ranger[:,0:length-until].view()
+	a = np.array(mx[:,until-1]).reshape(N, 1)
+	mx[:,until:] = a*rs**v
 	return mx
 
 def loan_matrix(inputs, length):

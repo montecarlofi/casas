@@ -14,6 +14,7 @@ import process as proc
 import get as get
 import display as disp
 
+STRANGE_CONSTANT = 0.0000001
 MAX_LENGTH = 2000
 DECIMALS = 0
 # MONEY_MULTIPLIER = 1000 In process file.
@@ -80,18 +81,25 @@ with st.sidebar:
 			inputs[i].update(proc.input_sidebar(inputs[i]))
 
 	st.markdown("""---""") # Make individual
-	_ = [inputs[n].update({ 'max_desembolso_mensual': st.number_input('Max desembolso mensual', 0, 30, max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')}) for n in NN]
+	#_ = [inputs[n].update({ 'max_desembolso_mensual': st.number_input('Max desembolso mensual', 0, 30, max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')}) for n in NN]
+	for n in NN:
+		number = st.number_input('Max desembolso mensual', 0, 30, value=max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')
+		#number = st.number_input('Tasa bancaria', value=inn['tasa']*100, key=f'tasa_{name}', disabled=disabled) / 100
+		if  number == 0 or number == None:
+			number = STRANGE_CONSTANT
+		inputs[n].update({ 'max_desembolso_mensual': number })
 
 	#max_desembolso_mensual = st.number_input('Max desembolso mensual', 0, 30, max_desembolso_mensual)
 
 	#_ = [inputs[n].update({ 'max_desembolso_mensual': max_desembolso_mensual}) for n in range(N)]
 	#meses_display = st.selectbox('Ilustración (meses)', np.arange(60, 721, 60), index=4, key="meses_display")
-	meses_display = 360
+	meses_display = 480
 
 	st.markdown("""---""")
-	r_mes_opor = st.slider("Crec. opor. alt.", 0, 15, 0, 1)
+	r_mes_opor = st.slider("Crec. opor. alt.", -5, 10, 0, 1)
 	r_mes_opor = 1 + (r_mes_opor/100)
 	r_mes_opor = np.e**(np.log(r_mes_opor)/12)
+	opor_until = st.slider("Opor.: Meses", 0, 240, 120, 12)
 
 for i in range(N):
 	with Columns[i]:
@@ -191,7 +199,8 @@ x_p = proc.x_intercepts_for_y(pmatrix, targets=y_p)
 #st.write("Paga solo 0: ", x_duo)
 
 # Oportunidad alternativa (bolsa)
-opor_matrix = proc.opor_sequence(inputs, x_duo, r_mes_opor, MAX_LENGTH)
+#opor_matrix = proc.opor_sequence(inputs, r_mes_opor, MAX_LENGTH, untils=x_duo) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
+opor_matrix = proc.opor_sequence2(inputs, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
 opor_matrix = proc.shift_sequences(opor_matrix, shifts=[inputs[n]['shift'] for n in NN])
 mmatrix[4] = opor_matrix[0]
 mmatrix[5] = opor_matrix[1]
