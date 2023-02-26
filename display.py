@@ -34,43 +34,6 @@ def streamlit_hide(markdown):
 
 	#st.metric(label="This is a very very very very very long sentence", value="70 °F")
 
-def plot_llegar_a_0(inputs, x_intercepts, imatrix, N):
-	data = []
-	for l in range(N):
-		line_data = imatrix[l]
-		for i in range(line_data.shape[0]):
-			d = { 'name': inputs[l]['name'], 'mes': i, 'y': line_data[i], 'blob': 1 }
-			#if inputs[l]['ingreso_pesimista'] == 0:
-			if inputs[l]['hide_graph'] == True:
-				pass
-			else:
-				data.append(d)
-
-	df = pd.DataFrame(data)#; print(df); exit()
-
-	plot0 = px.line(df, x=df.mes, y=df.y, hover_name=df.name, color='name',  
-		color_discrete_map={ inputs[0]['name']: 'green', inputs[1]['name']: 'blue', inputs[2]['name']: 'orange', inputs[3]['name']: 'red'}
-		)
-
-
-
-	#for i in range(len(x_intercepts)):
-	for key in x_intercepts:
-		#print(key, y_intercepts[key])
-		#if MAX_LENGTH >= x_intercepts[i]:
-		if key == 0 or key == 1:
-			yshift=8
-		else:
-			yshift=8
-		if x_intercepts[key] <= imatrix.shape[1]:
-			plot0.add_annotation(x=x_intercepts[key], y=0,#y_intercepts[key],
-				text=(f'{x_intercepts[key]}'),
-				showarrow=False,
-				yshift=yshift)
-
-	plot0.update_layout(showlegend=True)
-	st.plotly_chart(plot0, use_container_width=False)
-
 def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 	#try:
 	#	if labels == None:
@@ -119,8 +82,12 @@ def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 		#print("Key: ", key)
 		if inputs[key]['hide_graph'] == False or show_labels == False:
 			if xs[key] <= mtrx.shape[1]:
+				if inputs[key]['shift'] == 0:
+					text = labels[key]
+				else:
+					text = f'{labels[key]-inputs[key]["shift"]} ({labels[key]})'
 				plot.add_annotation(x=xs[key], y=ys[key],#y_intercepts[key],
-					text=(f'{labels[key]}'),
+					text=text,
 					showarrow=False,
 					yshift=yshift)
 
@@ -217,18 +184,27 @@ def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 		color_discrete_map=colourmap
 		)
 
-	for key in xs:
-		#print(key, ys[key])
+	#for key in xs:
+	#st.write(xs)
+	#for key in range(len(xs)):
+	for key in range(len(inputs)):
+		#st.write(key, ys[key])
 		#if MAX_LENGTH >= x_intercepts[i]:
 		if key == 0 or key == 1:
 			yshift=8
 		else:
 			yshift=8
 		#print("Key: ", key)
+
 		if hide_graphs[key] == False or show_labels == False:
 			if xs[key] <= mtrx.shape[1]:
+				if inputs[key]['shift'] == 0:
+					text = labels[key]
+				else:
+					text = f'{labels[key]-inputs[key]["shift"]} ({labels[key]})'
 				plot.add_annotation(x=xs[key], y=ys[key],#y_intercepts[key],
-					text=(f'{labels[key]}'),
+					#text=(f'{labels[key]}'),
+					text=text,
 					showarrow=False,
 					yshift=yshift)
 

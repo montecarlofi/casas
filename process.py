@@ -13,7 +13,8 @@ def get_columns(N):
 	#colGraph = 0
 	#return Columns, colGraph
 	# Works:
-	colGraph, cola00, cola, cola0, colb, colb0, colc, colc0, cold = st.columns([9, 1, 2, 1, 2, 1, 2, 1, 2])
+	#colGraph, cola00, cola, cola0, colb, colb0, colc, colc0, cold = st.columns([9, 1, 2, 1, 2, 1, 2, 1, 2])
+	colGraph, cola, colb, colc, cold = st.columns([6, 1, 1, 1, 1], gap='small')
 	Columns = []
 	Columns.append(cola)
 	Columns.append(colb)
@@ -54,7 +55,7 @@ def input_sidebar(inn):
 	return inn
 
 #def input_cols(name, ingreso=0, retraso=0, valorizacion=0, max_desembolso_mensual=0, hide_graph=False):
-def input_cols(inn):
+def input_cols(inn, chained=False):
 	#inn = { 'name': name }
 	#st.write(name)
 	disabled = True if inn['hide_graph'] == True else False
@@ -84,7 +85,15 @@ def input_cols(inn):
 
 	retraso = st.slider("Proyecto meses", 0, 36, int(inn['retraso']), 6, key=f'retraso_{inn["name"]}', disabled=disabled)
 	#shift = st.slider("Mover", 0, 96, int(inn['shift']), 1, key=f'shift_{inn["name"]}', disabled=disabled)
-	shift = st.number_input('Mover', 0, 240, int(inn['shift']), key=f'shift_{inn["name"]}', disabled=disabled)
+	if chained == False and disabled==True:
+		true_false = True
+	elif chained == True and disabled==False:
+		true_false = True
+	else:
+		true_false = False
+	if chained == True:
+		true_false = True
+	shift = st.number_input('Mover', 0, 240, int(inn['shift']), key=f'shift_{inn["name"]}', disabled=true_false)
 
 	#hide_graph = st.checkbox("Hide", value=hide_graph, key=f'visible_{name}', on_change=None, disabled=False)
 	#st.write("rate ", r_mes**12)
@@ -288,6 +297,29 @@ def curva_matrix(curva_de_aplanamiento, N): # Returns N x 120 matrix UNFINISHED
 	r_seq[0:N,p:] = rs
 	mx[::] = invs*r_seq**mx
 
+def duo_matrix(inputs, N, NN, income_matrix, D_matrix, y_s, MAX_LENGTH):
+	zeros = [0 for _ in NN]
+
+	rmatrix0 = income_matrix[:] + D_matrix[::] # + desembolso_matrix[:]
+	rmatrix1 = income_matrix[:] + D_matrix[::] # + desembolso_matrix[:]
+	y_r = [inputs[n]['cap_ini'] for n in NN]
+	x_r = __x_intercepts_for_y__(rmatrix1, targets=y_r)
+
+	duo_matrix = np.zeros([N*2, MAX_LENGTH])
+	duo_matrix[0:N] = rmatrix0
+	duo_matrix[N:N*2] = rmatrix1
+	steps = y_s.copy()
+	steps.extend(y_s)
+	print("Steps: ", steps)
+	duo_matrix = __shift_down__(duo_matrix, steps)
+	y_duo = [inputs[n]['cap_ini'] for n in NN]
+	y_duo.extend(y_duo)
+	x_duo = __x_intercepts_for_y__(duo_matrix, targets=y_duo)
+	duo_matrix[0:N] = __cut_after__(duo_matrix[0:N], targets=zeros)
+	duo_matrix[N:N*2] = __cut_before__(duo_matrix[N:N*2], targets=zeros)
+	duo_matrix[N:N*2] = __cut_after__(duo_matrix[N:N*2], targets=y_duo)
+	return duo_matrix, x_duo, y_duo
+
 def opor_sequence(inputs, r, length, untils):
 	# a * (1-r**N) / (1-r)
 	N = len(inputs)
@@ -386,7 +418,7 @@ def opor_sequence3(cap_ini, opor_saving, r, length, until=120): # Returns accord
 	mx[:,until:] = a*rs**v
 	return mx
 
-def loan_matrix(inputs, length):
+def loan_matrix(inputs, processed, length, chain=False):
 	N = len(inputs)
 	mx = np.zeros((N, length))
 
@@ -394,7 +426,10 @@ def loan_matrix(inputs, length):
 
 	for n in range(N):
 		i = inputs[n]['tasa']/12 
-		P = inputs[n]['inversion'] - (inputs[n]['cap_ini'] + inputs[n]['max_desembolso_mensual']*inputs[n]['retraso'])
+		if chain == True:
+			P = inputs[n]['inversion'] - (inputs[n]['cap_ini'] + processed[n]['max_desembolso_mensual']*inputs[n]['retraso'])
+		else:
+			P = inputs[n]['inversion'] - (inputs[n]['cap_ini'] + inputs[n]['max_desembolso_mensual']*inputs[n]['retraso'])
 		#retraso=inputs[n]['retraso']
 		retraso = 0
 		#mx[n][:] = ((P*i*(1+i)**mx[n][:]) / ((1+i)**mx[n][:] - 1)) # Each step is the monthly amort if that step represented the months.
@@ -435,13 +470,16 @@ def sim_debt(inputs, xs, ys, length):
 		# Shift left
 	return mx
 
-def calc_min_repay_times(inputs, loan_matrix) -> list:
+def calc_min_repay_times(inputs, processed, loan_matrix, chain=False) -> list:
 	xs = {}
 	ys = {}
 	N = len(inputs)
 
 	for n in range(N):
-		payment = inputs[n]['max_desembolso_mensual'] + inputs[n]['ingreso_pesimista']
+		if chain == True:
+			payment = processed[n]['max_desembolso_mensual'] + inputs[n]['ingreso_pesimista']
+		else:
+			payment = inputs[n]['max_desembolso_mensual'] + inputs[n]['ingreso_pesimista']
 		for i in range(0, loan_matrix.shape[1]):
 			if payment * (i+1) >= loan_matrix[n][i]:
 				xs[n] = i+1
@@ -484,19 +522,11 @@ def shift_right(mx, list_): # .......?............... No work. elegantly.
 	mx[::] = mx[:,0:shifts[:]] * None + mx[:,0:w-shifts[:]]
 	return mx
 
-# Don't use 480-konstant!
-def shift_left(line, n_steps):
-	ver = 1
-	hor =480# line.shape[1]
-
-	#line = np.array(line)
-
-	new = np.zeros([ver, hor])
-	new[0:1, 0:hor-n_steps] = line[0:1, n_steps:hor]
-	new[0:1, hor-n_steps:hor] = None
-	return new
+def __shift_down__(*a, **k):
+	return shift_down(*a, **k)
 
 def shift_down(mx, y_values): # WORKS
+	#print("y_values: ", y_values); exit()
 	y_values = np.array(y_values).reshape(mx.shape[0], 1)
 	#for i in range(mx.shape[1]):
 	#	mx[:,i] = mx[:,i] - y_values
@@ -519,6 +549,9 @@ def find_x_intercepts_for_y(mtrx, targets): # WORKS
 				ys[v] = mtrx[v][h]
 				break
 	return xs, ys 
+
+def __x_intercepts_for_y__(*a, **k):
+	return x_intercepts_for_y(*a, **k)
 
 def x_intercepts_for_y(mtrx, targets): # WORKS
 	xs = {}
@@ -676,6 +709,9 @@ def cut(mtrx, targets, retrasos):
 				#mtrx[j:1,i+1:] = None
 	return mtrx
 
+def __cut_after__(*a, **k):
+	return cut_after(*a, **k)
+
 def cut_after(mtrx, targets) -> 'mtrx': # WORKS
 	ver = mtrx.shape[0]; hor = mtrx.shape[1]
 
@@ -686,6 +722,9 @@ def cut_after(mtrx, targets) -> 'mtrx': # WORKS
 				#mtrx[v][h] = None
 				break
 	return mtrx
+
+def __cut_before__(*a, **k):
+	return cut_before(*a, **k)
 
 def cut_before(mtrx, targets) -> 'mtrx':
 	ver = mtrx.shape[0]; hor = mtrx.shape[1]
@@ -854,15 +893,20 @@ def add_list_to_processed(processed, varname, list_):
 			})
 	return processed	
 
-def loans(inputs, processed):
+def loans(inputs, processed, chain=False):
 	N = len(inputs)
-	return [inputs[n]['inversion'] - inputs[n]['cap_ini'] - inputs[n]['retraso'] * inputs[n]['max_desembolso_mensual'] for n in range(N)]
+	if chain == True:
+		return [inputs[n]['inversion'] - inputs[n]['cap_ini'] - inputs[n]['retraso'] * processed[n]['max_desembolso_mensual'] for n in range(N)]
+	else:
+		return [inputs[n]['inversion'] - inputs[n]['cap_ini'] - inputs[n]['retraso'] * inputs[n]['max_desembolso_mensual'] for n in range(N)]
 
-def prices_of_loans(inputs, processed):
+def prices_of_loans(inputs, processed, chain=False):
 	N = len(inputs)
-	cash_prior = [inputs[n]['retraso'] * inputs[n]['max_desembolso_mensual'] for n in range(N)]
+	if chain == True:
+		cash_prior = [inputs[n]['retraso'] * processed[n]['max_desembolso_mensual'] for n in range(N)]
+	else:
+		cash_prior = [inputs[n]['retraso'] * inputs[n]['max_desembolso_mensual'] for n in range(N)]
 	principals = [-cash_prior[n] + inputs[n]['inversion']-inputs[n]['cap_ini'] for n in range(N)] 
-	print("Principals: ", principals)
 	return [processed[n]['loan_repay_amount'] - principals[n] for n in range(N)]
 
 def cash_spent_to_repay(inputs, processed):

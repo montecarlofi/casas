@@ -39,9 +39,11 @@ curva_de_aplanamiento = [8, 7, 6, 5, 5, 5, 5, 5, 5, 4]
 #SuperLeft, SuperRight = st.columns([1, 1])
 #ColExpander = st.expander('Variables', expanded=False)
 Columns, colGraph = proc.get_columns(N)
-ColContainer = st.container()
+Columns2, colGraph2 = proc.get_columns(N)
+#ColContainer = st.container()
 #Expander = st.expander('Vars')
-ContHideButton = st.container()
+#ContHideButton = st.container()
+sidebar = st.sidebar
 #Columns2, _ = proc.get_columns(N)
 #SaveRestoreContainer = st.container()
 # Save/restore
@@ -65,39 +67,60 @@ tasas = [inputs[i]['tasa'] for i in range(N)]
 retrasos = [inputs[i]['retraso'] for i in range(N)]
 valorizaciones = [inputs[i]['valorizacion'] for i in range(N)]
 max_desembolsos = [inputs[i]['max_desembolso_mensual'] for i in NN] # max_desembolso_mensual = [inputs[n]['max_desembolso_mensual'] for n in range(N)]
+#st.write("File: ", [inputs[n]['max_desembolso_mensual'] for n in NN])
 
-# Names
+for i in range(N):
+	with Columns2[i]:
+		key = "Sim" + str(i)
+		#invisibles = [inputs[n][hide_graph] for n in NN]
+		invisible = st.checkbox("", value=inputs[i]['hide_graph'], key=f'hide_graph_{key}', on_change=None, disabled=False)
+		#if invisible == True:
+		#	hide_graph = False
+		#elif invisible == False:
+		#	hide_graph = True
+		inputs[i].update({ 'hide_graph': invisible })
+
+with Columns2[0]:
+	chain = st.checkbox("Cadena!", value=False, key='cadena', on_change=None, disabled=False)
+
 for i in range(N):
 	with Columns[i]:
 		key = "Sim" + str(i)
-		inputs[i].update({ 'name': st.text_input('', value=inputs[i]['name'], key=key)})
-		#hide_graph = st.checkbox("", value=inputs[i]['hide_graph'], key=f'hide_graph_{key}', on_change=None, disabled=False)
-		#inputs[i].update({ 'hide_graph': hide_graph })
+		inputs[i].update({ 'name': st.text_input('', value=inputs[i]['name'], key=key, disabled=inputs[i]['hide_graph'])})
+		inputs[i].update(proc.input_cols(inputs[i], chain))
 
-for i in range(N):
-	with Columns[i]:
-		key = "Sim" + str(i)
-		#inputs[i].update({ 'name': st.text_input('', value=inputs[i]['name'], key=key)})
-		hide_graph = st.checkbox("", value=inputs[i]['hide_graph'], key=f'hide_graph_{key}', on_change=None, disabled=False)
-		inputs[i].update({ 'hide_graph': hide_graph })
-
-# Amounts
-with st.sidebar:
+with sidebar:
 	st.subheader("SM Invs.  \n  ")
 	expanders = [st.expander(label=f"Inv: {inputs[i]['name']}") for i in range(N)]
 	for i in range(N):
 		with expanders[i]:
 			inputs[i].update(proc.input_sidebar(inputs[i]))
 
-	st.markdown("""---""") # Make individual
 	#_ = [inputs[n].update({ 'max_desembolso_mensual': st.number_input('Max desembolso mensual', 0, 30, max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')}) for n in NN]
-	for n in NN:
-		number = st.number_input('Max desembolso mensual', 0.0, 30.0, value=max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')
-		#number = st.number_input('Tasa bancaria', value=inn['tasa']*100, key=f'tasa_{name}', disabled=disabled) / 100
-		if  number == 0 or number == None:
-			number = STRANGE_CONSTANT
-		inputs[n].update({ 'max_desembolso_mensual': number })
+	#st.write("BBB ", [inputs[n]['max_desembolso_mensual'] for n in NN])
+	opor_expander = st.expander(label="Max desembolso mensual", expanded=False)
+	with opor_expander:
+		if chain == True:
+			number = st.number_input('', 0.0, 30.0, value=max_desembolsos[0], key=f'maxdes_{inputs[0]["name"]}')
+			if  number == 0 or number == None:
+				number = STRANGE_CONSTANT
+			suma = number
+			processed[0].update({ 'max_desembolso_mensual': suma })
+			st.write(f'{inputs[0]["name"]}', suma)
+			for n in range(1, N):
+				suma = suma + inputs[n-1]['ingreso_pesimista']
+				processed[n].update({ 'max_desembolso_mensual': suma })
+				st.write(f'{inputs[n]["name"]}', suma)
+			# (n-(n-1))*
+				#number = st.number_input(f'{inputs[n]["name"]}', 0.0, 30.0, value=max_desembolsos[n]+inputs[n]['ingreso_pesimista'], key=f'maxdes_{inputs[n]["name"]}')
+				#number = st.number_input('Tasa bancaria', value=inn['tasa']*100, key=f'tasa_{name}', disabled=disabled) / 100
+		else:
+			for n in NN:
+				max_ = st.number_input(f'{inputs[n]["name"]}', 0.0, 30.0, value=max_desembolsos[n], key=f'max_des_{n}')
+				inputs[n].update({ 'max_desembolso_mensual': max_ })
 
+	#st.write("CCC ", [inputs[n]['max_desembolso_mensual'] for n in NN])
+	#_ = [inputs[n].update({ 'max_desembolso_mensual': max_desembolso_mensual}) for n in NN]
 	#max_desembolso_mensual = st.number_input('Max desembolso mensual', 0, 30, max_desembolso_mensual)
 
 	#_ = [inputs[n].update({ 'max_desembolso_mensual': max_desembolso_mensual}) for n in range(N)]
@@ -113,23 +136,20 @@ with st.sidebar:
 	r_mes_opor = np.e**(np.log(r_mes_opor)/12)
 	opor_until = st.slider("Opor.: Meses", 0, 240, 120, 12)
 
-for i in range(N):
-	with Columns[i]:
-		inputs[i].update(proc.input_cols(inputs[i]))
-
-
+	
 # Do some math
-loan_matrix = proc.loan_matrix(inputs, MAX_LENGTH) 
-xs_repay, ys_repay = proc.calc_min_repay_times(inputs, loan_matrix)
+loan_matrix = proc.loan_matrix(inputs, processed, MAX_LENGTH, chain=chain) 
+xs_repay, ys_repay = proc.calc_min_repay_times(inputs, processed, loan_matrix, chain=chain)
 del loan_matrix
 processed = proc.add_dict_to_processed(processed, 'loan_repay_time', xs_repay)
 processed = proc.add_dict_to_processed(processed, 'loan_repay_amount', ys_repay)
 
-loans = proc.loans(inputs, processed)
+loans = proc.loans(inputs, processed, chain=chain)
 processed = proc.add_list_to_processed(processed, 'loan', loans)
+#st.write(loans)
 
 # Price of loans. # If loan/cap_ini is very high, then ys_repay will be outside MAX_LENGTH
-y = proc.prices_of_loans(inputs, processed)
+y = proc.prices_of_loans(inputs, processed, chain=chain)
 processed = proc.add_list_to_processed(processed, 'costo_prestamo', y)
 #print("Costo/price: ", processed[0])
 
@@ -144,12 +164,22 @@ y = proc.cash_and_income_spent_during_loan_repayment(inputs, processed)
 processed = proc.add_list_to_processed(processed, 'cash_and_income_spent_during_loan_repayment', y)
 
 # Retraso sólo opera en ingresos; igual hay valorización durante la etapa de construcción.
-# Curva de valorización colombiana
+# Curva de valorización colombiana	
 
 # Matrices
 income_matrix = proc.income_matrix(inputs, MAX_LENGTH)
 growth_matrix = proc.growth_matrix(inputs, MAX_LENGTH) # Valorización también sobre planos.
 desembolso_matrix = proc.desembolso_matrix(inputs, MAX_LENGTH)
+income = income_matrix.copy()
+#growth = growth_matrix.copy()
+desem  = desembolso_matrix.copy()
+D_     = proc.shift_sequences(desembolso_matrix, shifts=[inputs[n]['retraso'] for n in NN])
+del desem
+
+#D_matrix = proc.shift_sequences(desembolso_matrix, shifts=[inputs[n]['retraso'] for n in NN])
+#rmatrix1 = income_matrix[:] + D_matrix[::] # + desembolso_matrix[:]
+#y_r = [inputs[n]['cap_ini'] for n in NN]
+#x_r = proc.x_intercepts_for_y(rmatrix1, targets=y_r)
 
 growth_matrix = proc.shift_sequences(growth_matrix, shifts=[inputs[n]['shift'] for n in NN])
 income_matrix = proc.shift_sequences(income_matrix, shifts=[inputs[n]['shift'] for n in NN])
@@ -185,23 +215,42 @@ x_s = proc.x_intercepts_for_y(smatrix, targets=zeros)
 smatrix = proc.cut_after(smatrix, targets=zeros)
 
 # Restaurar cap_ini para nueva compra
-rmatrix0 = income_matrix[:] + D_matrix[::] # + desembolso_matrix[:]
-rmatrix1 = income_matrix[:] + D_matrix[::] # + desembolso_matrix[:]
-y_r = [inputs[n]['cap_ini'] for n in NN]
-x_r = proc.x_intercepts_for_y(rmatrix1, targets=y_r)
+duo_matrix, x_duo, y_duo = proc.duo_matrix(inputs, N, NN, income_matrix, D_matrix, y_s, MAX_LENGTH)
 
-duo_matrix = np.zeros([N*2, MAX_LENGTH])
-duo_matrix[0:N] = rmatrix0
-duo_matrix[N:N*2] = rmatrix1
-steps = y_s
-steps.extend(y_s)
-duo_matrix = proc.shift_down(duo_matrix, steps)
-y_duo = [inputs[n]['cap_ini'] for n in NN]
-y_duo.extend(y_duo)
-x_duo = proc.x_intercepts_for_y(duo_matrix, targets=y_duo)
-duo_matrix[0:N] = proc.cut_after(duo_matrix[0:N], targets=zeros)
-duo_matrix[N:N*2] = proc.cut_before(duo_matrix[N:N*2], targets=zeros)
-duo_matrix[N:N*2] = proc.cut_after(duo_matrix[N:N*2], targets=y_duo)
+# Make chain (next graph starts where last finished).
+if chain == True:
+	duo_matrix, x_duo, y_duo = proc.duo_matrix(inputs, N, NN, income, D_, y_s, MAX_LENGTH)
+	cadena = [0]
+	xlist = list(x_duo)
+	x = xlist[3] # The last or fourth?       BBBBBBBBBBBBBBAD DESIGN using a constant!
+	for i in range(0, N-0):
+		sss = cadena[i] + x_duo[i]
+		cadena.append(sss)
+	cadena.pop(-1)
+
+	x_duo = {}
+	for i in range(1, len(cadena)): # or len(x_duo)
+		x_duo.update({ i-1: cadena[i] })
+	x_duo.update({ N-1: sss })
+ 
+	duo_matrix[0:N] = proc.shift_sequences(duo_matrix[0:N], shifts=cadena)
+	duo_matrix[N:N*2] = proc.shift_sequences(duo_matrix[N:N*2], shifts=cadena)
+	for n in NN:
+		inputs[n].update({ 'shift': cadena[n] })
+
+	# Smatrix?
+	smatrix = income[::] + D_[::]
+	y_s = [processed[n]['loan_repay_amount'] for n in NN]
+	smatrix = proc.shift_sequences	(smatrix, shifts=cadena)
+	smatrix = proc.shift_down(smatrix, y_s)
+	x_s = proc.x_intercepts_for_y(smatrix, targets=zeros)
+	smatrix = proc.cut_after(smatrix, targets=zeros)
+
+	#mmatrix = proc.shift_sequences(mmatrix, shifts=cadena)
+	#x_m = proc.x_intercepts_for_y(mmatrix[0:N], targets=y_m)
+
+
+
 
 # Se paga solo, inclusive valorización
 deudasycaps = np.array([processed[n]['deuda_y_capital'] for n in NN]).reshape(N, 1)
@@ -212,8 +261,8 @@ x_p = proc.x_intercepts_for_y(pmatrix, targets=y_p)
 
 # Oportunidad alternativa (bolsa)
 #opor_matrix = proc.opor_sequence(inputs, r_mes_opor, MAX_LENGTH, untils=x_duo) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
-opor_matrix = proc.opor_sequence2(inputs, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
-#opor_matrix = proc.opor_sequence3(opor_cap_ini, opor_saving, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
+#opor_matrix = proc.opor_sequence2(inputs, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
+opor_matrix = proc.opor_sequence3(opor_cap_ini, opor_saving, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
 opor_matrix = proc.shift_sequences(opor_matrix, shifts=[inputs[n]['shift'] for n in NN])
 mmatrix[4] = opor_matrix[0]
 #mmatrix[5] = opor_matrix[1]
@@ -241,14 +290,14 @@ duo_matrix = duo_matrix[0:N*2,0:proc.len_longest_graph(duo_matrix)+11]
 
 
 #columns = [colA, colB, colC, colD]
-for i in range(len(Columns)):
-	with Columns[i]:
-		m = meses_display-1
-		m = meses_display
+#for i in range(len(Columns)):
+#	with Columns[i]:
+#		m = meses_display-1
+#		m = meses_display
 		#crecimiento_anual_alt = np.e**(np.log(mmatrix[i][m]/(inputs[i]['deuda_y_capital']))/(m/12))
 		#crecimiento_anual_alt = np.e**(np.log(mmatrix[i][m]/(processed[i]['deuda_y_capital']))/(m/12))
 #		crecimiento_anual_alt = np.e**(np.log(mmatrix[:,-1][i]/(processed[i]['cash_and_capital_spent']))/(m/12))
-		costosprestamos = [round(processed[_]['costo_prestamo'], DECIMALS) for _ in NN]
+#		costosprestamos = [round(processed[_]['costo_prestamo'], DECIMALS) for _ in NN]
 		###st.write("Costo", costosprestamos[i])
 		###st.write("$ gastado", processed[i]['cash_and_capital_spent'])
 #		st.write(round(crecimiento_anual_alt, 4)) #st.write(round(mmatrix[0][m]), "M")
@@ -256,8 +305,10 @@ for i in range(len(Columns)):
 		#st.write(round(-processed[i]['deuda_y_capital']))
 
 #with SaveRestoreContainer: 
-with Columns[0]:
+#with Columns[0]:
+with st.sidebar:
 	if st.button("Save"):
+		#st.write(inputs)
 		data_to_file = pd.DataFrame(inputs)
 		data_to_file.to_csv("save.csv", index=True)
 	#if st.button("Save II"):

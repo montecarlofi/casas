@@ -1,5 +1,5 @@
 ,name,inversion,tasa,cap_ini,valorizacion,r_high,r_mes,ingreso_pesimista,ingreso_optimista,retraso,shift,max_desembolso_mensual,hide_graph
-0,Chile a 400,400.0,0.08,120.0,4,2,1.003273739782199,2.0,0.0,0,0,7.0,False
-1,Chile b,400.0,0.08,120.0,4,2,1.003273739782199,2.0,0.0,0,48,7.0,True
-2,Chile c,400.0,0.08,120.0,4,1,1.003273739782199,2.0,0.0,0,86,7.0,False
-3,Chile d,400.0,0.08,120.0,4,2,1.003273739782199,2.0,0.0,6,118,7.0,False
+0,Mameyal,690.0,0.187,200.0,0,2,1,2.7,0.0,0,0,7.0,False
+1,Vento,400.0,0.187,120.0,0,2,1,2.7,0.0,0,121,7.0,False
+2,Mayemal+,690.0,0.1,240.0,0,1,1,2.7,0.0,0,169,7.0,False
+3,Chile d,300.0,0.08,60.0,0,2,1,2.0,0.0,0,247,6.98,True
