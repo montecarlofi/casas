@@ -93,7 +93,7 @@ def input_cols(inn, chained=False):
 		true_false = False
 	if chained == True:
 		true_false = True
-	shift = st.number_input('Mover', 0, 240, int(inn['shift']), key=f'shift_{inn["name"]}', disabled=true_false)
+	shift = st.number_input('Mover', 0, 940, int(inn['shift']), key=f'shift_{inn["name"]}', disabled=true_false)
 
 	#hide_graph = st.checkbox("Hide", value=hide_graph, key=f'visible_{name}', on_change=None, disabled=False)
 	#st.write("rate ", r_mes**12)

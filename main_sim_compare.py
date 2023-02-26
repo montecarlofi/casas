@@ -308,12 +308,15 @@ duo_matrix = duo_matrix[0:N*2,0:proc.len_longest_graph(duo_matrix)+11]
 #with Columns[0]:
 with st.sidebar:
 	if st.button("Save"):
-		#st.write(inputs)
-		data_to_file = pd.DataFrame(inputs)
-		data_to_file.to_csv("save.csv", index=True)
-	#if st.button("Save II"):
-	#	data_to_file = pd.DataFrame(inputs)
-	#	data_to_file.to_csv("save2.csv", index=True)
+		if chain == True:
+			st.warning('Unchain first!', icon="⚠️")
+		else:
+			#st.write(inputs)
+			data_to_file = pd.DataFrame(inputs)
+			data_to_file.to_csv("save.csv", index=True)
+		#if st.button("Save II"):
+		#	data_to_file = pd.DataFrame(inputs)
+		#	data_to_file.to_csv("save2.csv", index=True)
 
 #with SuperLeft:
 with colGraph:
