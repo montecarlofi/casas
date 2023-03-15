@@ -7,7 +7,7 @@ def read_data(file=None, N=None):
 		d = pd.read_csv(file)
 	names = list(d['name'])
 
-	N = len(names); print("N ", N)
+	N = len(names)#; print("N ", N)
 
 	inversiones = list(d['inversion'])
 	tasas = list(d['tasa'])

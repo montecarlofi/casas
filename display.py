@@ -95,9 +95,11 @@ def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 	plot.update_layout(showlegend=True)
 	st.plotly_chart(plot, use_container_width=True)
 
-def plot2(mtrx, xs, ys, names=None, hides=None, colours=None, show_labels=True, labels=None):
+def plot2(mtrx, xs, ys, N, names=None, hides=None, colours=None, show_labels=True, labels=None, message=""):
 	N = mtrx.shape[0]
-	print("Lines ", N)
+	#st.write("Message: ", message)
+	#st.write	(mtrx.shape[0], " : ", mtrx.shape[1])
+	#st.write("Names", names)
 	if names == None:
 		names = [i for i in range(N)]
 	if hides == None:
@@ -107,6 +109,7 @@ def plot2(mtrx, xs, ys, names=None, hides=None, colours=None, show_labels=True, 
 	for l in range(N):
 		line_data = mtrx[l]
 		for i in range(line_data.shape[0]):
+			#print("name: ", names[l])
 			d = { 'name': names[l], 'mes': i, 'y': line_data[i] }
 			#if inputs[l]['ingreso_pesimista'] == 0:
 			if hides[l] == True:
@@ -118,7 +121,7 @@ def plot2(mtrx, xs, ys, names=None, hides=None, colours=None, show_labels=True, 
 	df = pd.DataFrame(data)
 
 	if colours == None:
-		colours = ['green', 'blue', 'orange', 'red', 'lightgrey', 'lightblue', 'rgb(254, 217, 166)', 'pink']
+		colours = ['green', 'blue', 'orange', 'red', 'lightgreen', 'lightblue', 'rgb(254, 217, 166)', 'pink', 'lightgrey']
 	colourmap = {}
 	for c in range(len(names)):
 		colourmap.update({
@@ -148,7 +151,7 @@ def plot2(mtrx, xs, ys, names=None, hides=None, colours=None, show_labels=True, 
 	plot.update_layout(showlegend=True)
 	st.plotly_chart(plot, use_container_width=True)
 
-def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
+def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None, message=None):
 	names = [inputs[n]['name'] for n in range(len(inputs))]
 	names.extend(names)
 	for i in range(len(inputs), len(names)):
@@ -183,7 +186,7 @@ def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 	plot = px.line(df, x=df.mes, y=df.y, hover_name=df.name, color='name',  
 		color_discrete_map=colourmap
 		)
-
+	st.write("Message: ", message); print("Message: ", message); 
 	#for key in xs:
 	#st.write(xs)
 	#for key in range(len(xs)):
@@ -197,6 +200,7 @@ def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 		#print("Key: ", key)
 
 		if hide_graphs[key] == False or show_labels == False:
+			print("key: ", key)
 			if xs[key] <= mtrx.shape[1]:
 				if inputs[key]['shift'] == 0:
 					text = labels[key]
