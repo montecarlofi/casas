@@ -121,7 +121,7 @@ for i in range(N):
 
 with sidebar:
 	st.subheader("SM Invs.  \n  ")
-	expanders = [st.expander(label=f"Inv: {inputs[i]['name']}") for i in range(N)]
+	expanders = [st.expander(label=f"{inputs[i]['name']}") for i in range(N)]
 	for i in range(N):
 		with expanders[i]:
 			inputs[i].update(userinput.input_sidebar(inputs[i]))
