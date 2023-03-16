@@ -1262,7 +1262,7 @@ def datasheet(names, inversiones, roimx, roi_earliest_com, roi_max_com, Principa
 			'': names[n],
 			'Repay: months ($)': f'{amorts_repay_times[n]} ({math.ceil(amorts_totals_closest[n])})',
 			'Debt max': math.ceil(debts[n]),
-			'Debt-to-principal ratio': round(allcaps/Principals[n],2),
+			'Debt-to-principal ratio': round(allcaps/Principals[n] if Principals[n] != 0 else 1,2),
 			#'Loan repayed (closest)': int(amorts_totals_closest[n]),
 			'Cost of loan (i payed)': math.ceil(interests[n]),
 			'Debt-to-investment ratio': round(debts[n]/inversiones[n], 2),
