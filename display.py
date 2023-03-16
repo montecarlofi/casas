@@ -34,6 +34,10 @@ def streamlit_hide(markdown):
 
 	#st.metric(label="This is a very very very very very long sentence", value="70 °F")
 
+def show_tables(dict_):
+	for d in dict_:
+		st.write(d, dict_[d])
+
 def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 	#try:
 	#	if labels == None:
@@ -131,7 +135,7 @@ def plot2(mtrx, xs, ys, N, names=None, hides=None, colours=None, show_labels=Tru
 	plot = px.line(df, x=df.mes, y=df.y, hover_name=df.name, color='name',  
 		color_discrete_map=colourmap
 		)
-
+	#st.write("ys", ys)
 	for key in xs:
 		#print(key, ys[key])
 		#if MAX_LENGTH >= x_intercepts[i]:
@@ -139,7 +143,7 @@ def plot2(mtrx, xs, ys, N, names=None, hides=None, colours=None, show_labels=Tru
 			yshift=8
 		else:
 			yshift=8
-		#print("Key: ", key)
+		#st.write("Key: ", key, xs[key], " Message: ", message, " ys[key] ", ys[key])
 		if hides[key] == False or show_labels == False:
 			if xs[key] <= mtrx.shape[1]:
 				plot.add_annotation(x=xs[key], y=ys[key],#y_intercepts[key],
@@ -186,7 +190,10 @@ def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None, 
 	plot = px.line(df, x=df.mes, y=df.y, hover_name=df.name, color='name',  
 		color_discrete_map=colourmap
 		)
-	st.write("Message: ", message); print("Message: ", message); 
+
+	if message != None:
+		st.write("Message: ", message); print("Message: ", message); 
+		
 	#for key in xs:
 	#st.write(xs)
 	#for key in range(len(xs)):
@@ -200,7 +207,6 @@ def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None, 
 		#print("Key: ", key)
 
 		if hide_graphs[key] == False or show_labels == False:
-			print("key: ", key)
 			if xs[key] <= mtrx.shape[1]:
 				if inputs[key]['shift'] == 0:
 					text = labels[key]

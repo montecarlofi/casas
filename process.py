@@ -8,11 +8,11 @@ def curva_steps(N, min_, valorizaciones, length, periods=120):
 	curvas = np.ones([N, periods])
 	curvas_next = np.ones([N, 1]) * min_
 	for i in range(N):
-		r = 1 + valorizaciones[i]/100
-		r = np.e**(np.log(r)/12)
+		#r = 1 + valorizaciones[i]/100
+		#r = np.e**(np.log(r)/12)
+		r = valorizaciones[i]
 		curva_reducer = np.e**(np.log(min_/r)/periods)
 		curvas[i:i+1,0:periods] = r * curva_reducer ** np.arange(1.0, periods+1)
-		#curvas[i:i+1,periods:] = min_
 	return curvas, curvas_next
 
 # Accumulated income/spending.
@@ -33,7 +33,13 @@ def income_matrix(dineros, maxlength, retrasos=None):
 				mx[n:n+1,0:retraso] = 0 # alt: = None
 	return mx
 
-# Exponential growth (matrix is accumulation: each step represents the cumulative value).
+
+
+
+
+
+# Exponential growth matrix (cumulative value in steps).
+#
 def growth_matrix(inversiones, rates, length, curva_flag=False, curvas=None, curva_next=0):
 	N = len(inversiones)
 	invs = np.array(inversiones).reshape(N, 1)
@@ -42,12 +48,12 @@ def growth_matrix(inversiones, rates, length, curva_flag=False, curvas=None, cur
 
 	if curva_flag == False:
 		rs = np.array(rates).reshape(N, 1)
-		mx[::] = np.arange(1, length+1) # These will be the exponents.
+		mx[::] = np.arange(1, length+1) # Exponents.
 		mx[::] = invs*rs**mx
 
-	else: # Make step-on-step calculation for the curvas length. 
+	else:
 		length_ = curvas.shape[1]
-		mx[:,0:1] = invs[:]*curvas[:,0:1] # **mx[:,0:1]
+		mx[:,0:1] = invs[:]*curvas[:,0:1]
 		for i in range(1, length_):
 			mx[:,i:i+1] = mx[:,i-1:i] * curvas[:,i:i+1]
 		mx[:,length_:] = np.arange(1, length-length_+1) # Exponents.
@@ -55,7 +61,8 @@ def growth_matrix(inversiones, rates, length, curva_flag=False, curvas=None, cur
 
 	return mx
 
-# Each step (x) shows what the total repayment would be if it were to be payed back in (x) number of months.
+# Loan size range, calculated by repayment times (x-axis).
+#
 def loan_ranger(Ps, tasas, length):
 	N = len(Ps)
 	mx = np.zeros((N, length))
@@ -65,13 +72,15 @@ def loan_ranger(Ps, tasas, length):
 	for n in range(N):
 		i = tasas[n]
 		P = Ps[n]
-		if i == 0 or i == None or math.isnan(i) == True: # If no interest rate
-			mx[n][:] = P # 0 # Not None ?
+		if i == 0 or i == None or math.isnan(i) == True: # If no interest rate.
+			mx[n][:] = P
 		else:
 			i = tasas[n]/12 
-			#mx[n][:] = (P*i*(1+i)**mx[n][:]) / ((1+i)**mx[n][:] - 1)
-			mx[n][:] = ((P*i*(1+i)**(mx[n][:])) / ((1+i)**(mx[n][:]) - 1)) * (mx[n][:])
+			mx[n][:] = (P*i*(1+i)**(mx[n][:]) / ((1+i)**(mx[n][:]) - 1)) * (mx[n][:])
 	return mx
+
+
+
 
 
 # Returns True if at least one is out of bounds + list of trues/falses.
@@ -415,6 +424,14 @@ def smatrix(s, y_s): # GOOD. Info encapsulaiton.
 	s = __cut_after__(s, targets=zeros)
 	return s, x_s
 
+def pmatrix2(growth_matrix, income_matrix, spent, inversiones, amorts_totals_closest, amorts_repay_times, retrasos, shifts, out_of_bounds_value=None):
+	N = len(inversiones)
+	pmatrix = growth_matrix - inversiones + income_matrix - amorts_totals_closest
+	y_p = [spent[n][amorts_repay_times[n]+retrasos[n]] for n in range(N)] # Todo el dinero gastado
+	x_p, y = __x_intercepts_for_y__(pmatrix, targets=y_p, out_of_bounds_value=out_of_bounds_value)
+	x_p = __to_dict__([int(x_p[n])+shifts[n] for n in range(N)])
+	return pmatrix, x_++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++p, y_p
+
 def pre_debt(mmatrix, desembolso_matrix, debt_matrix, inversiones, caps, for_steps):
 	N = debt_matrix.shape[0]
 	#st.write(mmatrix[0:4,0] - inversiones + desembolso_matrix[0:4,0] + caps)
@@ -514,7 +531,7 @@ def duo_matrix(inputs, N, NN, income_matrix, D_matrix, y_s, MAX_LENGTH):
 	duo_matrix[N:N*2] = __cut_after__(duo_matrix[N:N*2], targets=y_duo)
 	return duo_matrix, x_duo, y_duo
 
-def duo_matrix(mx, limits, end_values, maxlength):
+def duo_matrix_new(mx, limits, end_values, maxlength):
 	N = mx.shape[0]
 	zeros = [0 for _ in range(N)]
 
@@ -707,8 +724,9 @@ def find_x_intercepts_for_y(mtrx, targets): # WORKS
 def __x_intercepts_for_y__(*a, **k):
 	return x_intercepts_for_y(*a, **k)
 
-def x_intercepts_for_y(mtrx, targets): # WORKS
+def x_intercepts_for_y(mtrx, targets, out_of_bounds_value=-1):
 	xs = {}
+	ys = {}
 	ver = mtrx.shape[0]
 	hor = mtrx.shape[1]
 
@@ -716,13 +734,20 @@ def x_intercepts_for_y(mtrx, targets): # WORKS
 	targets = [int(targets[number]) for number in range(len(targets))]
 	
 	for v in range(ver):
+		xs[v] = out_of_bounds_value
+	
+	for v in range(ver):
 		for h in range(hor):
 			#st.write(f'{v}:{h}')
 			if mtrx[v][h] >= targets[v]:# and math.isnan(mtrx[v][h]) == True:
 				xs[v] = h
+				ys[v] = mtrx[v][h]
 			#	st.write("##########3··················································")
 				break
-	return xs
+	return xs, ys # Remember: ys values can be the same or above targets.
+
+def __to_dict__(*a, **k):
+	return to_dict(*a, **k)
 
 def to_dict(list_or_array, int_=False): # works
 	d = {}
@@ -1237,11 +1262,13 @@ def datasheet(names, inversiones, roimx, roi_earliest_com, roi_max_com, Principa
 			'': names[n],
 			'Repay: months ($)': f'{amorts_repay_times[n]} ({math.ceil(amorts_totals_closest[n])})',
 			'Debt max': math.ceil(debts[n]),
+			'Debt-to-principal ratio': round(allcaps/Principals[n],2),
 			#'Loan repayed (closest)': int(amorts_totals_closest[n]),
 			'Cost of loan (i payed)': math.ceil(interests[n]),
-			'? Loan ratio: real (nom)': f'{round(debts[n]/inversiones[n], 2)} ({round(allcaps/(Principals[n]),2)})' if allcaps != 0 else f'─',
+			'Debt-to-investment ratio': round(debts[n]/inversiones[n], 2),
+			#'? Loan ratio: real (nom)': f'{round(debts[n]/inversiones[n], 2)} ({round(allcaps/(Principals[n]),2)})' if allcaps != 0 else f'─',
 			#'? Loan ratio: real (nom)': f'{round(allcaps/(debts[n]+allcaps), 2)} ({round(allcaps/(Principals[n]),2)})' if allcaps != 0 else f'─',
-			'Loan-to-earnings': '?',
+			'Debt-to-earnings': '',
 			'Optimum ROI (+com)': round(roi_max_com[n], 3),
 			'Optimal ROI time (incl.com.)': roi_earliest_com[n], #### When the slope was at steepest.
 			'Highest risk moment': 12+roimx[n:n+1,retrasos[n]+1:].argmin(), # axis=1
@@ -1275,7 +1302,7 @@ def loan_rangerOLD(tasas, inversiones, caps, desembolsos, length, retrasos, chai
 		else:
 			i = tasas[n]/12 
 			#retraso=inputs[n]['retraso']
-			#print(f'= {((P*i*(1+i)**(mx[n][:])) / ((1+i)**(mx[n][:]-retraso) - 1)) * (mx[n][:]-retraso)}')
+			print(f'= {((P*i*(1+i)**(mx[n][:])) / ((1+i)**(mx[n][:]-retraso) - 1)) * (mx[n][:]-retraso)}')
 			retraso = 0
 			#mx[n][:] = ((P*i*(1+i)**mx[n][:]) / ((1+i)**mx[n][:] - 1)) # Each step is the monthly amort if that step represented the months.
 			mx[n][:] = ((P*i*(1+i)**(mx[n][:]-retraso)) / ((1+i)**(mx[n][:]-retraso) - 1)) * (mx[n][:]-retraso)

@@ -72,16 +72,9 @@ sidebar = st.sidebar
 #SaveRestoreContainer = st.container()
 message_box = st.container()
 st.write("  \n  "); st.write("  \n  "); st.write("  \n  "); 
-data_tables = st.expander("Data tables", expanded=False)
+data_tables = st.expander("Data tables", expanded=True)
 
-#st.markdown("""---""")
-# Save/restore
 file = "save.csv"
-#with SaveRestoreContainer: #with Columns[0]:
-#	if st.button("Restore"):
-#		file = "save.csv"
-#	if st.button("Restore II"):
-#		file = "save2.csv"
 
 inputs = get.read_data(file)[0:N]
 processed = [{} for i in range(N)]
@@ -111,10 +104,14 @@ for i in range(N):
 		inputs[i].update({ 'hide_graph': invisible })
 
 with Columns2[0]:
-	chain = st.checkbox("Cadena!", value=False, key='cadena', on_change=None, disabled=False)
+	#chain = st.checkbox("Cadena!", value=False, key='cadena', on_change=None, disabled=False)
+	chain = False
+	pass
 with Columns2[1]:
-	meses_boton = st.checkbox("Long view", value=False, key='longview', on_change=None, disabled=False)
+	meses_boton = False
+	#meses_boton = st.checkbox("Long view", value=False, key='longview', on_change=None, disabled=False)
 	meses_display = 120 if meses_boton == False else MAX_MESES_INV
+	pass
 
 for i in range(N):
 	with Columns[i]:
@@ -202,7 +199,6 @@ zeros = [0 for _ in NN]
 # Ranger-matrices for internal calculations; not graphing. 
 #curva_si_o_no = False
 (curva_steps, curva_next) = proc.curva_steps(N, curva_min, rates, MAX_LENGTH, periods=CURVA_TIME) if curva_si_o_no==True else (None, None)
-
 
 # Four matrices to rule them all.            				# These must be shifted around within functions according to 'retrasos' and 'shifts,' but should be kept "raw" in this main script. 
 # Matrices for internal calcs; not graphs.
@@ -330,11 +326,8 @@ roi_max_com      = proc.y_values_for_x(roi_com_matrix, roi_earliest_com)
 #debt_matrix = proc.shift_sequences(debt_matrix, shifts=shifts)
 
 #opor_seq = proc.opor_sequence(inputs, MAX_LENGTH)[0]
-D_matrix = proc.shift_sequences(desembolso_matrix, shifts=retrasos)
-#D_matrix = proc.shift_right(desembolso_matrix, [inputs[n]['retraso'] for n in NN])
 
 D_     = proc.shift_sequences(desembolso_matrix.copy(), shifts=retrasos)
-
 
 
 #cash_until_repayment_dates = [caps[n] + amorts_totals_sharp]
@@ -349,17 +342,49 @@ smatrix = 0 - bank_debt
 smatrix[smatrix > 0] = 1
 indices = smatrix.argmax(axis=1)
 indices = [int(i) for i in indices]
+indices = [indices[n]+shifts[n] for n in NN]
 x_s = gentools.to_dict(indices)
 smatrix[smatrix == 1] = None # Shaves off after.
 smatrix[smatrix == 0] = None # Shaves off before.
+
 #smatrix[smatrix < to_1d(initial_diffs)] = 999
 
+y_s = amorts_totals_closest
 #y_s = proc.to_dict(amorts_totals_closest)
-
+#y_s = [processed[n]['loan_repay_amount'] for n in NN]
 
 # Restaurar cap_ini para nueva compra
-duo_matrix, x_duo, y_duo = proc.duo_matrix(spent, limits=caps, end_values=amorts_totals_closest, maxlength=MAX_LENGTH)
+#duo_matrix, x_duo, y_duo = proc.duo_matrix(spent, limits=caps, end_values=amorts_totals_closest, maxlength=MAX_LENGTH)
 #duo_matrix, x_duo, y_duo = proc.duo_matrix(inputs, N, NN, income_matrix, D_matrix, y_s, MAX_LENGTH)
+duo_matrix = np.zeros([income_matrix.shape[0]*2, income_matrix.shape[1]])
+duo_matrix[0:N] = income_matrix + desembolso_matrix - to_1d(y_s)
+duo_matrix[N:N*2] = duo_matrix[0:N]
+#duo_matrix[0:N] = duo_matrix[0:N] - to_1d(y_s)
+duo_matrix[0:N] = proc.set_value_after_pos(duo_matrix[0:N], positions=amorts_repay_times, value=None)
+duo_matrix[N:N*2] = proc.set_value_before_pos(duo_matrix[N:N*2], positions=amorts_repay_times, value=None)
+caps2 = caps.copy()
+caps2.extend(caps)
+for n in range(N, N*2):
+	m = duo_matrix[n:n+1].view()
+	m[m > caps2[n]] = None
+
+#duo_matrix[N:N*2] = proc.set_value_before_pos(duo_matrix[N:N*2], positions=amorts_repay_times, value=None)
+
+x_duo = [0 for _ in NN] + [amorts_repay_times[n] + retrasos[n] for n in NN]
+#st.write("x_duo", x_duo);
+x_duo = proc.to_dict(x_duo) #; x_duo = [None for _ in NN]
+y_duo = proc.to_dict(caps2)
+
+#cutoffs, y = proc.matrices_intersect_greater_equal(reference=duo_matrix[N:N*2], test=np.zeros([1, duo_matrix.shape[1]]))
+#x_duo = [cutoffs[n]+1 for n in range(len(cutoffs))]
+xx, yy = proc.x_intercepts_for_y(duo_matrix[N:N*2], targets=caps) # Not implemented yet
+#print(xx); 
+x_duo = xx#[xx[n]+1 for n in range(len(xx))]
+
+x_duo = proc.to_dict([amorts_repay_times[n] + int(caps[n]/(desembolsos[n]+ingresos[n])) for n in NN])
+
+
+
 
 # Make chain (next graph starts where last finished).
 if chain == True:
@@ -387,7 +412,7 @@ if chain == True:
 	y_s = [processed[n]['loan_repay_amount'] for n in NN]
 	smatrix = proc.shift_sequences	(smatrix, shifts=cadena)
 	smatrix = proc.shift_down(smatrix, y_s)
-	x_s = proc.x_intercepts_for_y(smatrix, targets=zeros)
+	x_s, y = proc.x_intercepts_for_y(smatrix, targets=zeros)
 	smatrix = proc.cut_after(smatrix, targets=zeros)
 
 	#mmatrix = proc.shift_sequences(mmatrix, shifts=cadena)
@@ -396,24 +421,16 @@ if chain == True:
 
 
 
-# Se paga solo, inclusive valorización
-#deudasycaps = np.array([processed[n]['deuda_y_capital'] for n in NN]).reshape(N, 1)
-deudasycaps = debt[:,0].reshape(N, 1)
-pmatrix = income_matrix[:] + growth_matrix[:] - deudasycaps
+# Net gains
+#pmatrix, x_p, y_p = proc.pmatrix2(growth_matrix, income_matrix, spent, to_1d(inversiones), to_1d(amorts_totals_closest), amorts_repay_times, retrasos, shifts, out_of_bounds_value=-99)
 
-pmatrix = patri_matrix[0:N] - to_1d(spent[:,0])
 
-pmatrix = patrimonio_bruto - to_1d(inversiones) + to_1d(ingresos) # Valorización sola + ingresos
-
-#print(to_1d(amorts_totals_closest)); exit()
 pmatrix = growth_matrix - to_1d(inversiones) + income_matrix - to_1d(amorts_totals_closest)
 y_p = [spent[n][amorts_repay_times[n]+retrasos[n]] for n in NN] # Todo el dinero gastado
-st.write("yp", y_p)
-#[inputs[n]['inversion'] for n in NN]
- #****************************************************************************
-#y_p = amorts_repay_times
-x_p = proc.x_intercepts_for_y(pmatrix, targets=y_p)
-#st.write("Paga solo 0: ", x_duo)
+x_p, y = proc.x_intercepts_for_y(pmatrix, targets=y_p, out_of_bounds_value=-99)
+x_p = proc.to_dict([int(x_p[n])+shifts[n] for n in NN])
+
+
 
 # Oportunidad alternativa (bolsa)
 if r_mes_opor != 1:
@@ -453,9 +470,10 @@ roi_com_matrix = roi_com_matrix[0:N,0:int(.5*(meses_display+1))]
 #elnx_matrix = elnx_matrix[:,0:meses_display+1]
 #month_by_month_matrix = month_by_month_matrix[:,0:meses_display+1]
 pmatrix = pmatrix[0:N,0:max(x_p.values())+6]
+pmatrix = proc.shift_sequences(pmatrix, shifts=shifts)
 #smatrix = smatrix[0:N,0:meses_display+1]
-
 smatrix = smatrix[0:N,0:proc.len_longest_graph(smatrix)+11]
+smatrix = proc.shift_sequences(smatrix, shifts=shifts)
 duo_matrix = duo_matrix[0:N*2,0:proc.len_longest_graph(duo_matrix)+11]
 
 
@@ -464,20 +482,9 @@ datasheet = proc.datasheet(colnames, inversiones, roI_matrix, roi_earliest_com, 
 
 
 
-def extra_shit():
-	with data_tables:
-		#st.write("debt:", debt[0:N])
-		st.write("debt:", debt[0:N])
-		st.write("bank_debt:", bank_debt[0:N])
-		st.write("spent total:", spent[0:N])#[0][0:36])
-		st.write("ingresos", income_matrix[0:N])
-		st.write("patri br", patrimonio_bruto[0:N])
-		st.write("neto", 	patrimonio_neto[0:N,0:200])
-		st.write("roI", 	roI_matrix[0:N,0:200])
-		st.write("roi com", 	roi_com_matrix[0:N,0:200])
-
-extra_shit()
-
+with data_tables:
+	#disp.show_tables({ 'debt': debt, 'bank_debt': bank_debt, 'spent': spent, 'income_matrix': income_matrix, 'patrimonio_bruto': patrimonio_bruto, 'neto': patrimonio_neto, 'roi': roI_matrix, 'roi_com_matrix': roi_com_matrix, 'pmatrix': pmatrix})
+	pass
 
 #columns = [colA, colB, colC, colD]
 #for i in range(len(Columns)):
@@ -514,7 +521,7 @@ with colGraph:
 		st.write(ALERT)
 #		exit()
 	#tab1, roimatrx, elnxmatrix, month_by_month, Banco, BancoCap, PagaSolo = st.tabs(['Inv', '|  ROI', '|  eLnX', '|  m by m', '|  Banco', '|  Banco+Cap','|  Paga solo']) #PagaSolo
-	tab1, roimatrx, roi2matrix, Banco, BancoCap, PagaSolo, datasheet = st.tabs(['Patrimonio', '|  ROI',  '|  roi-com', '|  Banco', '|  Banco+Cap','|  Ganancia neta','|  DataSheet']) #PagaSolo
+	tab1, roimatrx, roi2matrix, Banco, BancoCap, PagaSolo, datasheet = st.tabs(['Patrimonio', '|  ROI',  '|  ROI-Com', '|  Banco', '|  Banco+Cap','|  Ganancia neta','|  DataSheet']) #PagaSolo
 	with tab1:
 		xs_inv, ys_inv = proc.find_x_intercepts_for_y(patri_matrix[0:N], targets=interests)
 
@@ -539,11 +546,11 @@ with colGraph:
 		#x_m = proc.x_intercepts_for_y(patri_matrix[0:N], targets=y_m)
 		
 		disp.plot2(patri_matrix, x_m, y_m, N+2, names=names, hides=hides, show_labels=True, labels=y_m, message="mmatrix")
-		st.write("Patrimonio neto en color claro.")
+		#st.write("Patrimonio neto en color claro.")
 		#disp.plot_duo(inputs, mmatrix, x_m, y_m, labels=y_m)
 
 	with roimatrx:
-		message = "El retorno si vendes en x momento."
+		message = "Retorno al vender en mes X."
 		#disp.plot2(roi_matrix, x_r, y_r, N, names=names, hides=hides, show_labels=True, labels=x_r, message="roi")
 		disp.plot2(roI_matrix, x_r, y_r, N, names=names, hides=hides, show_labels=True, labels=x_r, message="roi")
 		st.write(message)
@@ -553,7 +560,7 @@ with colGraph:
 		x = proc.to_dict(roi_earliest_com)
 		y = proc.to_dict(roi_max_com)
 		disp.plot2(roi_com_matrix, x, y, N, names=names, hides=hides, show_labels=True, labels=x, message="roi")
-		st.write("Retorno ajustado por comisiones.")
+		st.write("Retorno óptimo ajustado por comisiones.")
 
 #	with elnxmatrix:
 #		disp.plot2(elnx_matrix, {}, {}, N=0, names=names, hides=hides, show_labels=True)
@@ -568,13 +575,16 @@ with colGraph:
 		st.write("Tiempo requerido para saldar cuentas con el banco.")
 
 	with BancoCap:
-		disp.plot2(duo_matrix, x_duo, y_duo, N=4, names=names, hides=hides, show_labels=True, labels=y_duo, message="Bcap plot2")
-		#disp.plot_duo(inputs, duo_matrix, x_duo, y_duo, labels=x_duo, message="BancoCap")
-		st.write("Tiempo para volver a tener el mismo capital inicial.  \nIncluye ahorros (desembolso) mensuales.")
+		#del hides[-1]
+		#st.write("Hides:" , hides)
+		#st.write("y_duo", y_duo)
+		#disp.plot2(duo_matrix, x_duo, y_duo, N=4, names=names, hides=hides, show_labels=True, labels=y_duo, message="Bcap plot2")
+		disp.plot_duo(inputs, duo_matrix, x_duo, y_duo, labels=x_duo)
+		st.write("Recuperar capital inicial, incl. desembolsos: desde inicio (desde hoy).")
 
 	with PagaSolo:
 		disp.plot(inputs, pmatrix, x_p, y_p, labels=x_p)
-		st.write("Valorización sola + ingresos - todos dineros gastados.")
+		st.write("Valorización sola + ingresos - todos los dineros gastados.")
 
 	with datasheet:
 		datasheet = proc.datasheet(colnames, inversiones, roI_matrix, roi_earliest_com, roi_max_com, Principals, bank_debts, caps, interests, desembolsos, retrasos, amorts_repay_times, amorts_totals_closest) # Dict of dicts. 
