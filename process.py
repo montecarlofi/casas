@@ -430,7 +430,7 @@ def pmatrix2(growth_matrix, income_matrix, spent, inversiones, amorts_totals_clo
 	y_p = [spent[n][amorts_repay_times[n]+retrasos[n]] for n in range(N)] # Todo el dinero gastado
 	x_p, y = __x_intercepts_for_y__(pmatrix, targets=y_p, out_of_bounds_value=out_of_bounds_value)
 	x_p = __to_dict__([int(x_p[n])+shifts[n] for n in range(N)])
-	return pmatrix, x_++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++p, y_p
+	return pmatrix, x_p, y_p
 
 def pre_debt(mmatrix, desembolso_matrix, debt_matrix, inversiones, caps, for_steps):
 	N = debt_matrix.shape[0]
@@ -1239,10 +1239,10 @@ def roi_earliest_max(roimx):
 			if roimx[n][w-1] < roimx[n][w] and roimx[n][w] > roimx[n][w+1]:
 				x = w
 
-def optimal_max_x(roimx):
+def optimal_max_x(roimx, start_point=0):
 	eln_matrix = np.e**(np.log(roimx)/np.arange(1,MAX_LENGTH+1))
-	x_points = 1 + eln_matrix[:,1:].argmax(axis=1)
-	return x_points		
+	x_points = start_point + eln_matrix[:,start_point:].argmax(axis=1)
+	return x_points
 
 def y_values_for_x(mx, x):
 	Y = []
@@ -1250,7 +1250,7 @@ def y_values_for_x(mx, x):
 		Y.append(mx[i][x[i]])
 	return Y
 
-def datasheet(names, inversiones, roimx, roi_earliest_com, roi_max_com, Principals, debts, caps, interests, desembolsos, retrasos, amorts_repay_times, amorts_totals_closest):
+def datasheet(names, inversiones, roimx, roi_max, roi_earliest, roi_earliest_com, roi_max_com, gains_roiearl_com, gains_at_entrega, Principals, debts, caps, interests, desembolsos, retrasos, amorts_repay_times, amorts_totals_closest):
 	N = roimx.shape[0]
 
 	data = {}
@@ -1260,50 +1260,24 @@ def datasheet(names, inversiones, roimx, roi_earliest_com, roi_max_com, Principa
 		#cash_out = caps[n] + [amorts_totals_closest]
 		d = {
 			'': names[n],
-			'Repay: months ($)': f'{amorts_repay_times[n]} ({math.ceil(amorts_totals_closest[n])})',
-			'Debt max': math.ceil(debts[n]),
-			'Debt-to-principal ratio': round(allcaps/Principals[n] if Principals[n] != 0 else 1,2),
-			#'Loan repayed (closest)': int(amorts_totals_closest[n]),
+			'Repay: months ($)': f'{amorts_repay_times[n]}',
 			'Cost of loan (i payed)': math.ceil(interests[n]),
-			'Debt-to-investment ratio': round(debts[n]/inversiones[n], 2),
+			'Debt max': f'{math.ceil(debts[n])} ({math.ceil(amorts_totals_closest[n])})',
+			#'Debt-to-principal ratio': round(allcaps/Principals[n] if Principals[n] != 0 else 1,2),
+			#'Loan repayed (closest)': int(amorts_totals_closest[n]),
+			#'Debt-to-investment ratio': round(debts[n]/inversiones[n], 2),
 			#'? Loan ratio: real (nom)': f'{round(debts[n]/inversiones[n], 2)} ({round(allcaps/(Principals[n]),2)})' if allcaps != 0 else f'─',
 			#'? Loan ratio: real (nom)': f'{round(allcaps/(debts[n]+allcaps), 2)} ({round(allcaps/(Principals[n]),2)})' if allcaps != 0 else f'─',
-			'Debt-to-earnings': '',
+			#'Debt-to-earnings': '',
+			'Cap-to-inv ratio': round(allcaps/inversiones[n] if inversiones[n] != 0 else 1,2),
+			#'Optimum ROI': round(roi_max[n], 3),
+			#'Optimal ROI time': roi_earliest[n], #### When the slope was at steepest.
+			'Net gan. entrega proy.': int(gains_at_entrega[n]),
 			'Optimum ROI (+com)': round(roi_max_com[n], 3),
 			'Optimal ROI time (incl.com.)': roi_earliest_com[n], #### When the slope was at steepest.
-			'Highest risk moment': 12+roimx[n:n+1,retrasos[n]+1:].argmin(), # axis=1
+			'Net at opt ROI-time': int(gains_roiearl_com[n]),
+			#'Highest risk moment': retrasos[n]+roimx[n:n+1,retrasos[n]+1:].argmin(), # axis=1
 		}
 		#data[n] = { 'id': n, 'data': d }
 		data[n] = d
 	return data
-
-
-###############################################################################################################
-
-def loan_rangerOLD(tasas, inversiones, caps, desembolsos, length, retrasos, chain=False, desembolsos_alt=None):
-	N = len(inversiones)
-	mx = np.zeros((N, length))
-
-	mx[:] = np.arange(1, length+1)
-
-	for n in range(N):
-		i = tasas[n]
-		inversion = inversiones[n]
-		cap_ini = caps[n]
-		desembolso = desembolsos[n]
-		retraso = retrasos[n]
-
-		P = inversion - (cap_ini + desembolso*retraso)
-		P = 0 if P < 0 else P
-		#print(f'{n} loan_ranger: i: {i}, retraso: {retraso}, P: {P}')
-
-		if i == 0 or i == None or math.isnan(i) == True: # If no interest rate
-			mx[n][:] = P # 0 # Not None ?
-		else:
-			i = tasas[n]/12 
-			#retraso=inputs[n]['retraso']
-			print(f'= {((P*i*(1+i)**(mx[n][:])) / ((1+i)**(mx[n][:]-retraso) - 1)) * (mx[n][:]-retraso)}')
-			retraso = 0
-			#mx[n][:] = ((P*i*(1+i)**mx[n][:]) / ((1+i)**mx[n][:] - 1)) # Each step is the monthly amort if that step represented the months.
-			mx[n][:] = ((P*i*(1+i)**(mx[n][:]-retraso)) / ((1+i)**(mx[n][:]-retraso) - 1)) * (mx[n][:]-retraso)
-	return mx

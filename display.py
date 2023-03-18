@@ -34,9 +34,14 @@ def streamlit_hide(markdown):
 
 	#st.metric(label="This is a very very very very very long sentence", value="70 °F")
 
-def show_tables(dict_):
-	for d in dict_:
-		st.write(d, dict_[d])
+def show_tables(hides, dicts):
+	rows = []
+	for n in range(len(hides)):
+		if hides[n] == False:
+			rows.append(n)
+	for d in dicts:
+		table = dicts[d]
+		st.write(f'{d}: {rows}', table[rows,:])
 
 def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 	#try:
@@ -87,7 +92,7 @@ def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 		if inputs[key]['hide_graph'] == False or show_labels == False:
 			if xs[key] <= mtrx.shape[1]:
 				if inputs[key]['shift'] == 0:
-					text = labels[key]
+					text = labels[key] if labels[key] >= 0 else ''
 				else:
 					text = f'{labels[key]-inputs[key]["shift"]} ({labels[key]})'
 				plot.add_annotation(x=xs[key], y=ys[key],#y_intercepts[key],

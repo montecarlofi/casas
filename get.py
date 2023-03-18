@@ -41,6 +41,11 @@ def read_data(file=None, N=None):
 	ingresos_optimistas = list(d['ingreso_optimista'])
 	retrasos = list(d['retraso'])
 	hide_graphs = list(d['hide_graph'])
+	for i in range(len(hide_graphs)):
+		if hide_graphs[i] == True:
+			hide_graphs[i] = False
+		elif hide_graphs[i] == False:
+			hide_graphs[i] = True
 
 	#derrames_hasta_pagar_prestamos = list(d['derrame_hasta_pagar_prestamo'])
 	#derrames_totales = list(d['derrame_total'])

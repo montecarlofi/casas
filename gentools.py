@@ -17,12 +17,14 @@ def filter_matrix_greater_than(mx, limits_list, in_place_list) -> 'matrix':
 		#mx[n][mx[n] > limits_list[n]] = in_place_list[n]
 	return mx
 
-def to_dict(list_or_array, as_int=False):
+def to_dict(list_or_array, key_type=int, value_type=int, as_int=False):
 	d = {}
 	for e in range(len(list_or_array)):
-		if as_int==True:
-			d.update({ e: int(list_or_array[e]) })
-		else:
-			d.update({ e: list_or_array[e] })
+		d.update({ key_type(e): value_type(list_or_array[e]) })
+	#for e in range(len(list_or_array)):
+	#	if as_int==True:
+	#		d.update({ e: int(list_or_array[e]) })
+	#	else:
+	#		d.update({ e: list_or_array[e] })
 	return d
 
