@@ -17,6 +17,7 @@
 # Remember that intercept 0 is the first month, intercept 30 is month 31, etc.
 # Saldar+RecCap
 # For display, remember to shift everything one step, so that month 0 becomes 1.
+# The higher the rent profits, the later in time the maximum ROI, yet this is true only at a specific tipping point.
 import streamlit as st; st.set_page_config(layout="wide")
 import streamlit as st; #st.set_page_config(layout="wide")
 import numpy as np 
@@ -70,7 +71,7 @@ with Columns2[0]:
 with Columns2[1]:
 	meses_boton = False
 	#meses_boton = st.checkbox("Long view", value=False, key='longview', on_change=None, disabled=False)
-	meses_display = 120 if meses_boton == False else MAX_MESES_INV
+	meses_display = SHORT_VIEW if meses_boton == False else MAX_LENGTH
 	pass
 
 for i in range(N):
@@ -117,8 +118,8 @@ with sidebar:
 	#meses_display = st.selectbox('Ilustración (meses)', np.arange(60, 721, 60), index=4, key="meses_display")
 	#meses_display = MAX_MESES_INV
 
-	meses_boton = st.checkbox(f"Visualización: {MAX_MESES_INV} meses", value=False, key='longview', on_change=None, disabled=False)
-	meses_display = SHORT_VIEW if meses_boton == False else MAX_MESES_INV
+	meses_boton = st.checkbox(f"Visualización: 2x meses", value=False, key='longview', on_change=None, disabled=False)
+	meses_display = SHORT_VIEW if meses_boton == False else MAX_LENGTH
 
 	# Curva de aplanamiento colombiana
 	curva_si_o_no = st.checkbox("Curva de aplanamiento", value=False, key='curva', on_change=None, disabled=False)
@@ -282,7 +283,10 @@ costmx[costmx < 0] = 0
 
 #spending_times = [amorts_repay_times[_] + retrasos[_] for _ in NN]
 #spent = proc.set_value_after_pos(spent, spending_times, value=200) # Use last value on repeat instead.
-roi_matrix  = patrimonio_bruto[::] / (-pre_debtc + spent[::] + costmx) # Implement loan_cost_ranger
+with np.errstate(divide='ignore'):#, invalid='ignore'):
+	roi_matrix  = patrimonio_bruto[::] / (-pre_debtc + spent[::] + costmx) # Implement loan_cost_ranger
+
+#roi_matrix  = np.all(-pre_debtc + spent[::] + costmx) and (patrimonio_bruto[::] / (-pre_debtc + spent[::] + costmx)) or 0
 
 numerator   = patrimonio_bruto[::] - pre_debtc[::] - costmx[::]
 denominator = spent[::]
@@ -313,6 +317,7 @@ y_r 			 = roi_max
 gain_roiearl_com = [patrimonio_bruto[n][pos]-inversiones[n]-com*patrimonio_bruto[n][pos] for n, pos in zip(range(N), roi_earliest_com)] # Then: gain_roiearl_com = [gain_roiearl_com[n][0] for n in NN] # Flatten
 gains_at_entrega = [patrimonio_bruto[n][r]-inversiones[n]-com*patrimonio_bruto[n][r] for n, r in zip(range(N), retrasos)]
 #st.write("x_r", x_r, "y_r", y_r, "hides", hides)
+cost_opt_roi_com_time = [costmx[n][x] for n, x in zip(range(N), roi_earliest_com)]
 
 
 #cash_until_repayment_dates = [caps[n] + amorts_totals_sharp]
@@ -439,8 +444,12 @@ patri_matrix = patri_matrix[:,:meses_display+1]
 double_shifts = shifts.extend(shifts)
 patri_matrix[0:N] = proc.shift_sequences(patri_matrix[0:N], shifts=shifts)
 patri_matrix[N:N*2] = proc.shift_sequences(patri_matrix[N:N*2], shifts=shifts)
+
 roi_matrix = roi_matrix[0:N,0:int(.5*(meses_display+1))]
 roi_com_matrix = roi_com_matrix[0:N,0:int(.5*(meses_display+1))]
+#xmax = roi_earliest_com.max()
+#roi_com_matrix = roi_com_matrix[:,:xmax+24]
+
 pmatrix = pmatrix[0:N,0:max(x_p.values())+6]
 pmatrix = proc.shift_sequences(pmatrix, shifts=shifts)
 smatrix = smatrix[0:N,0:proc.len_longest_graph(smatrix)+11]
@@ -517,8 +526,8 @@ with colGraph:
 		st.write("Recuperación total [valorización+ingresos-todos los dineros gastados].")
 
 	with datasheet:
-		datasheet = proc.datasheet(colnames, inversiones, roi_matrix, roi_max, roi_earliest, roi_earliest_com, roi_max_com, gain_roiearl_com, gains_at_entrega, Principals, bank_debts, caps, interests, desembolsos, retrasos, amorts_repay_times, amorts_totals_closest) # Dict of dicts. 
+		datasheet = proc.datasheet(colnames, inversiones, roi_matrix, roi_max, roi_earliest, roi_earliest_com, roi_max_com, gain_roiearl_com, gains_at_entrega, Principals, bank_debts, caps, interests, desembolsos, retrasos, amorts_repay_times, amorts_totals_closest, cost_opt_roi_com_time)
 		df = pd.DataFrame.from_dict(datasheet)
 		st.write(df)
 
-end_time = time.time(); print("Time to calculate: ", end_time-start_time); st.write("Time to calculate: ", end_time-start_time)
+end_time = time.time(); print("Tiempo de procesamiento: ", end_time-start_time); st.write("Time to calculate: ", end_time-start_time)

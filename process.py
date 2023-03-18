@@ -1250,7 +1250,7 @@ def y_values_for_x(mx, x):
 		Y.append(mx[i][x[i]])
 	return Y
 
-def datasheet(names, inversiones, roimx, roi_max, roi_earliest, roi_earliest_com, roi_max_com, gains_roiearl_com, gains_at_entrega, Principals, debts, caps, interests, desembolsos, retrasos, amorts_repay_times, amorts_totals_closest):
+def datasheet(names, inversiones, roimx, roi_max, roi_earliest, roi_earliest_com, roi_max_com, gains_roiearl_com, gains_at_entrega, Principals, debts, caps, interests, desembolsos, retrasos, amorts_repay_times, amorts_totals_closest, cost_opt_roi_com_time):
 	N = roimx.shape[0]
 
 	data = {}
@@ -1260,22 +1260,24 @@ def datasheet(names, inversiones, roimx, roi_max, roi_earliest, roi_earliest_com
 		#cash_out = caps[n] + [amorts_totals_closest]
 		d = {
 			'': names[n],
-			'Repay: months ($)': f'{amorts_repay_times[n]}',
-			'Cost of loan (i payed)': math.ceil(interests[n]),
-			'Debt max': f'{math.ceil(debts[n])} ({math.ceil(amorts_totals_closest[n])})',
+			'Saldar: meses ($)': f'{amorts_repay_times[n]}',
+			'Costo préstamo (ints.) [hold]': math.ceil(interests[n]),
+			'Costo @ opt ROI-tiempo [sell]': int(cost_opt_roi_com_time[n]),
+			'Deuda max': f'{math.ceil(debts[n])} ({math.ceil(amorts_totals_closest[n])})',
 			#'Debt-to-principal ratio': round(allcaps/Principals[n] if Principals[n] != 0 else 1,2),
 			#'Loan repayed (closest)': int(amorts_totals_closest[n]),
 			#'Debt-to-investment ratio': round(debts[n]/inversiones[n], 2),
 			#'? Loan ratio: real (nom)': f'{round(debts[n]/inversiones[n], 2)} ({round(allcaps/(Principals[n]),2)})' if allcaps != 0 else f'─',
 			#'? Loan ratio: real (nom)': f'{round(allcaps/(debts[n]+allcaps), 2)} ({round(allcaps/(Principals[n]),2)})' if allcaps != 0 else f'─',
 			#'Debt-to-earnings': '',
-			'Cap-to-inv ratio': round(allcaps/inversiones[n] if inversiones[n] != 0 else 1,2),
+			#'Cap-a-inv cociente': str(int(100*allcaps/inversiones[n] if inversiones[n] != 0 else 1)) + "%",
+			'Cap-a-inv cociente': round(allcaps/inversiones[n], 2) if inversiones[n] != 0 else 1,
 			#'Optimum ROI': round(roi_max[n], 3),
 			#'Optimal ROI time': roi_earliest[n], #### When the slope was at steepest.
 			'Net gan. entrega proy.': int(gains_at_entrega[n]),
-			'Optimum ROI (+com)': round(roi_max_com[n], 3),
-			'Optimal ROI time (incl.com.)': roi_earliest_com[n], #### When the slope was at steepest.
-			'Net at opt ROI-time': int(gains_roiearl_com[n]),
+			'ROI-tiempo opt. (-com.)': roi_earliest_com[n], #### When the slope was at steepest.
+			'ROI óptimo (-comisiones)': str(int(100*(roi_max_com[n]-1))) + '%',
+			'Neta opt ROI-tiempo': int(gains_roiearl_com[n]),
 			#'Highest risk moment': retrasos[n]+roimx[n:n+1,retrasos[n]+1:].argmin(), # axis=1
 		}
 		#data[n] = { 'id': n, 'data': d }
