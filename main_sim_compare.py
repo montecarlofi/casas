@@ -1,3 +1,5 @@
+# Risk management: If it doesn't work, then you blow up? Be able to play several times, so that probabilities can act in your favour. 
+# — THAT'S risk management. 
 # DNA Capital
 # Uventet innsikt.
 # Optimalt roi-tidspunkt — projeksjon + justert/funnet underveis. 
@@ -30,6 +32,11 @@ from CONSTANTS import *
 import gentools
 from gentools import list_to_1d_matrix as to_1d
 from gentools import list_to_1d_flat as to_1d_flat
+LANG = 'English'
+if LANG == 'Spanish':
+	from LANG_SPA import *
+elif LANG == 'English':
+	from LANG_ENG import *
 import time; start_time = time.time()
 
 disp.streamlit_hide(st.markdown)
@@ -57,7 +64,7 @@ for i in range(N):
 	with Columns2[i]:
 		key = "Sim" + str(i)
 		#invisibles = [inputs[n][hide_graph] for n in NN]
-		invisible = st.checkbox("Deact.", value=inputs[i]['hide_graph'], key=f'hide_graph_{key}', on_change=None, disabled=False)
+		invisible = st.checkbox(DEACTIVAR, value=inputs[i]['hide_graph'], key=f'hide_graph_{key}', on_change=None, disabled=False)
 		if invisible == True:
 			hide_graph = False
 		elif invisible == False:
@@ -89,7 +96,7 @@ with sidebar:
 
 	#_ = [inputs[n].update({ 'max_desembolso_mensual': st.number_input('Max desembolso mensual', 0, 30, max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')}) for n in NN]
 	#st.write("BBB ", [inputs[n]['max_desembolso_mensual'] for n in NN])
-	expander_desembolsos = st.expander(label="Max desembolso mensual", expanded=False)
+	expander_desembolsos = st.expander(label=MAX_DESEMBOLSO, expanded=False)
 	with expander_desembolsos:
 		if chain == True:
 			number = st.number_input('', 0.0, 30.0, value=max_desembolsos[0], key=f'maxdes_{inputs[0]["name"]}')
@@ -118,25 +125,25 @@ with sidebar:
 	#meses_display = st.selectbox('Ilustración (meses)', np.arange(60, 721, 60), index=4, key="meses_display")
 	#meses_display = MAX_MESES_INV
 
-	meses_boton = st.checkbox(f"Visualización: 2x meses", value=False, key='longview', on_change=None, disabled=False)
+	meses_boton = st.checkbox(VISUALIZACION, value=False, key='longview', on_change=None, disabled=False)
 	meses_display = SHORT_VIEW if meses_boton == False else MAX_LENGTH
 
 	# Curva de aplanamiento colombiana
-	curva_si_o_no = st.checkbox("Curva de aplanamiento", value=False, key='curva', on_change=None, disabled=False)
+	curva_si_o_no = st.checkbox(CURVA, value=False, key='curva', on_change=None, disabled=False)
 	curva_min_disabled = False if curva_si_o_no == True else True
-	curva_min = 1 + (st.slider("Valor bajo", -5, 5, 1, 1, key='curva_min', disabled=curva_min_disabled) / 100)
+	curva_min = 1 + (st.slider(VALOR_BAJO, -5, 5, 1, 1, key='curva_min', disabled=curva_min_disabled) / 100)
 	curva_min = np.e**(np.log(curva_min)/12)
 
 	#st.markdown("""---""")
-	expanderOpor = st.expander(label="Inversión alternativa", expanded=False)
+	expanderOpor = st.expander(label=INVERSION_ALTERNATIVA, expanded=False)
 	with expanderOpor:
-		opor_cap_ini = st.number_input('Inversión alt. cap.', 0.0, 1000.0, key='opor_cap_ini')
+		opor_cap_ini = st.number_input(INVERSION_ALT_CAP, 0.0, 1000.0, key='opor_cap_ini')
 		#opor_cap_ini = st.number_input('Inversión alt.', 0, 100, key='opor_cap_ini')
-		opor_saving = st.number_input('Inversión alt.', 0, 100, key='opor_saving')
-		r_mes_opor = st.slider("Crec. opor. alt.", -5, 10, 0, 1)
+		opor_saving = st.number_input(INVERSION_ALT, 0, 100, key='opor_saving')
+		r_mes_opor = st.slider(CRECIMIENTO_OPORTUNIDAD_ALTERNATIVA, -5, 10, 0, 1)
 		r_mes_opor = 1 + (r_mes_opor/100)
 		r_mes_opor = np.e**(np.log(r_mes_opor)/12)
-		opor_until = st.slider("Opor.: Meses", 0, 240, 120, 1)
+		opor_until = st.slider(OPOR_MESES, 0, 240, 120, 1)
 
 
 # Repeatedly used input variables
@@ -293,8 +300,6 @@ denominator = spent[::]
 
 roi_matrix  = numerator / denominator
 
-#y_r = [2 for n in range(roi_matrix.shape[0])]
-#x_r = {}
 
 # ROI - comisiones
 com = comision_constructora + comision_inmob
@@ -312,8 +317,10 @@ rmx              = roi_com_matrix.copy()
 rmx[rmx < 1]     = 1
 roi_earliest_com = proc.optimal_max_x(rmx, start_point=1)
 roi_max_com      = proc.y_values_for_x(roi_com_matrix, roi_earliest_com)
-x_r 			 = gentools.to_dict(roi_earliest, value_type=float)
-y_r 			 = roi_max
+#x_r 			 = gentools.to_dict(roi_earliest, value_type=int)
+#y_r 			 = roi_max
+y_r = [2 for n in NN]
+x_r, y_r = proc.x_intercepts_for_y(roi_matrix.copy(), targets=y_r)
 gain_roiearl_com = [patrimonio_bruto[n][pos]-inversiones[n]-com*patrimonio_bruto[n][pos] for n, pos in zip(range(N), roi_earliest_com)] # Then: gain_roiearl_com = [gain_roiearl_com[n][0] for n in NN] # Flatten
 gains_at_entrega = [patrimonio_bruto[n][r]-inversiones[n]-com*patrimonio_bruto[n][r] for n, r in zip(range(N), retrasos)]
 #st.write("x_r", x_r, "y_r", y_r, "hides", hides)
@@ -463,7 +470,7 @@ with data_tables:
 	pass
 
 with st.sidebar:
-	if st.button("Save"):
+	if st.button(SAVE):
 		if chain == True:
 			st.warning('Unchain first!', icon="⚠️")
 		else:
@@ -475,7 +482,7 @@ with colGraph:
 	if ALERT != None:
 		st.write(ALERT)
 
-	tab1, roimatrx, roi2matrix, Banco, BancoCap, PagaSolo, datasheet = st.tabs(['Patrimonio', '|  ROI',  '|  ROI-Com', '|  Banco', '|  Banco+Cap','|  Ganancia neta','|  DataSheet']) #PagaSolo
+	tab1, roimatrx, roi2matrix, Banco, BancoCap, PagaSolo, datasheet = st.tabs([f'{PATRIMONIO}', f'|  {ROI_}',  f'|  {ROICOM}', f'|  {BANCO}', f'|  {BANCO_CAP}',f'|  {NETGAIN}',f'|  {DATASHEET}']) #PagaSolo
 	with tab1:
 		xs_inv, ys_inv = proc.find_x_intercepts_for_y(patri_matrix[0:N], targets=interests)
 
@@ -502,7 +509,7 @@ with colGraph:
 		disp.plot2(patri_matrix, x_m, y_m, N+2, names=names, hides=hides, show_labels=True, labels=y_m, message="Patrimonio neto en color claro.")
 
 	with roimatrx:
-		message = "Retorno al vender en mes X."
+		message = RETORNOMESX
 		disp.plot2(roi_matrix, x_r, y_r, N, names=names, hides=hides, show_labels=True, labels=x_r, message="roi")
 		st.write(message)
 
@@ -510,24 +517,24 @@ with colGraph:
 		x = proc.to_dict(roi_earliest_com)
 		y = proc.to_dict(roi_max_com)
 		disp.plot2(roi_com_matrix, x, y, N, names=names, hides=hides, show_labels=True, labels=x, message="roi")
-		st.write("Retorno óptimo ajustado por comisiones.")
+		st.write(RETORNOMESXCOM)
 
 	with Banco:
 		disp.plot(inputs, smatrix, x_s, zeros, labels=x_s)
-		st.write("Tiempo requerido para saldar cuentas con el banco.")
+		st.write(TIEMPOREQ)
 
 	with BancoCap:
 		#disp.plot2(duo_matrix, x_duo, y_duo, N=4, names=names, hides=hides, show_labels=True, labels=y_duo, message="Bcap plot2")
 		disp.plot_duo(inputs, duo_matrix, x_duo, y_duo, labels=x_duo)
-		st.write("Recuperar capital inicial, incl. desembolsos: desde inicio (desde hoy).")
+		st.write(RECCAP)
 
 	with PagaSolo:
 		disp.plot(inputs, pmatrix, x_p, y_p, labels=x_p)
-		st.write("Recuperación total [valorización+ingresos-todos los dineros gastados].")
+		st.write(RETOT)
 
 	with datasheet:
 		datasheet = proc.datasheet(colnames, inversiones, roi_matrix, roi_max, roi_earliest, roi_earliest_com, roi_max_com, gain_roiearl_com, gains_at_entrega, Principals, bank_debts, caps, interests, desembolsos, retrasos, amorts_repay_times, amorts_totals_closest, cost_opt_roi_com_time)
 		df = pd.DataFrame.from_dict(datasheet)
 		st.write(df)
 
-end_time = time.time(); print("Tiempo de procesamiento: ", end_time-start_time); st.write("Time to calculate: ", end_time-start_time)
+end_time = time.time(); print(PROCESAMIENTO, end_time-start_time); st.write(PROCESAMIENTO, end_time-start_time)

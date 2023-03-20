@@ -1,6 +1,11 @@
 import streamlit as st
 import numpy as np
 from CONSTANTS import *
+LANG = 'English'
+if LANG == 'Spanish':
+	from LANG_SPA import *
+elif LANG == 'English':
+	from LANG_ENG import *
 
 def get_columns(N):
 	#Columns = []
@@ -34,11 +39,11 @@ def input_sidebar(inn):
 
 	disabled = True if inn['hide_graph'] == True else False
 
-	inversion = st.number_input('Monto', value=inn['inversion'], key=f'inversion_{name}', disabled=disabled)
-	cap_propio = st.number_input('Cap propio', 0.0, inversion, value=inn['cap_ini'], key=f'cap_propio_{name}', disabled=disabled)
+	inversion = st.number_input(MONTO, value=inn['inversion'], key=f'inversion_{name}', disabled=disabled)
+	cap_propio = st.number_input(CAPITAL, 0.0, inversion, value=inn['cap_ini'], key=f'cap_propio_{name}', disabled=disabled)
 	if cap_propio > inversion:
 		cap_propio = inversion
-	tasa = st.number_input('Tasa bancaria', 0.0, 30.0, value=inn['tasa']*100, key=f'tasa_{name}', disabled=disabled) / 100
+	tasa = st.number_input(TASA, 0.0, 30.0, value=inn['tasa']*100, key=f'tasa_{name}', disabled=disabled) / 100
 	porcion = cap_propio/inversion
 
 	inn.update({'inversion': inversion, 
@@ -59,7 +64,7 @@ def input_cols(inn, chained=False):
 	R_high = int(inn['r_high'])
 	#R_high = st.slider("High valoriz.", -5, 15, R_high, 1, key=f"high_{inn['name']}", disabled=disabled)
 	valorizacion = int(inn['valorizacion'])
-	valorizacion = st.slider("Valorización", -5, 15, valorizacion, 1, key=f"valorizacion_{inn['name']}", disabled=disabled)
+	valorizacion = st.slider(VALORIZACION, -5, 15, valorizacion, 1, key=f"valorizacion_{inn['name']}", disabled=disabled)
 	if valorizacion != 0:
 		v = 1 + (valorizacion/100) # Buggy: 0 becomes 1 ?
 		r_mes = np.e**(np.log(v)/12)
@@ -74,12 +79,12 @@ def input_cols(inn, chained=False):
 
 	key = "ingreso_optimista_" + str(inn['name'])
 	value = int(inn['ingreso_pesimista']*MONEY_MULTIPLIER)
-	ingreso_pesimista = st.slider("Ing pesimista K", 0, 8000, value, 100, key=key, disabled=disabled)
+	ingreso_pesimista = st.slider(INGRESO, 0, 8000, value, 100, key=key, disabled=disabled)
 	ingreso_optimista = 0#st.slider("Ingreso optimista K", 0, 5000, 2500, 100)
 	ingreso_pesimista /= MONEY_MULTIPLIER
 	ingreso_optimista /= MONEY_MULTIPLIER
 
-	retraso = st.slider("Proyecto meses", 0, 48, int(inn['retraso']), 6, key=f'retraso_{inn["name"]}', disabled=disabled)
+	retraso = st.slider(PROYECTO_MESES, 0, 48, int(inn['retraso']), 6, key=f'retraso_{inn["name"]}', disabled=disabled)
 	#shift = st.slider("Mover", 0, 96, int(inn['shift']), 1, key=f'shift_{inn["name"]}', disabled=disabled)
 	if chained == False and disabled==True:
 		true_false = True
@@ -89,7 +94,7 @@ def input_cols(inn, chained=False):
 		true_false = False
 	if chained == True:
 		true_false = True
-	shift = st.number_input('Mover', 0, 940, int(inn['shift']), key=f'shift_{inn["name"]}', disabled=true_false)
+	shift = st.number_input(MOVER, 0, 940, int(inn['shift']), key=f'shift_{inn["name"]}', disabled=true_false)
 
 	#hide_graph = st.checkbox("Hide", value=hide_graph, key=f'visible_{name}', on_change=None, disabled=False)
 	#st.write("rate ", r_mes**12)
