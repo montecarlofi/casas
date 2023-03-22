@@ -63,7 +63,6 @@ max_desembolsos = [inputs[i]['max_desembolso_mensual'] for i in NN] # max_desemb
 for i in range(N):
 	with Columns2[i]:
 		key = "Sim" + str(i)
-		#invisibles = [inputs[n][hide_graph] for n in NN]
 		invisible = st.checkbox(DEACTIVAR, value=inputs[i]['hide_graph'], key=f'hide_graph_{key}', on_change=None, disabled=False)
 		if invisible == True:
 			hide_graph = False
@@ -88,14 +87,12 @@ for i in range(N):
 		inputs[i].update(userinput.input_cols(inputs[i], chain))
 
 with sidebar:
-	st.subheader("SM Invs.  \n  ")
+	st.subheader("SpreadBetting  \n  ") # SM Invs.
 	expanders = [st.expander(label=f"{inputs[i]['name']}") for i in range(N)]
 	for i in range(N):
 		with expanders[i]:
 			inputs[i].update(userinput.input_sidebar(inputs[i]))
 
-	#_ = [inputs[n].update({ 'max_desembolso_mensual': st.number_input('Max desembolso mensual', 0, 30, max_desembolsos[n], key=f'maxdes_{inputs[n]["name"]}')}) for n in NN]
-	#st.write("BBB ", [inputs[n]['max_desembolso_mensual'] for n in NN])
 	expander_desembolsos = st.expander(label=MAX_DESEMBOLSO, expanded=False)
 	with expander_desembolsos:
 		if chain == True:
@@ -109,21 +106,10 @@ with sidebar:
 				suma = suma + inputs[n-1]['ingreso_pesimista']
 				processed[n].update({ 'max_desembolso_mensual': suma })
 				st.write(f'{inputs[n]["name"]}', suma)
-			# (n-(n-1))*
-				#number = st.number_input(f'{inputs[n]["name"]}', 0.0, 30.0, value=max_desembolsos[n]+inputs[n]['ingreso_pesimista'], key=f'maxdes_{inputs[n]["name"]}')
-				#number = st.number_input('Tasa bancaria', value=inn['tasa']*100, key=f'tasa_{name}', disabled=disabled) / 100
 		else:
 			for n in NN:
 				max_ = st.number_input(f'{inputs[n]["name"]}', 0.0, 30.0, value=max_desembolsos[n], key=f'max_des_{n}')
 				inputs[n].update({ 'max_desembolso_mensual': max_ })
-
-	#st.write("CCC ", [inputs[n]['max_desembolso_mensual'] for n in NN])
-	#_ = [inputs[n].update({ 'max_desembolso_mensual': max_desembolso_mensual}) for n in NN]
-	#max_desembolso_mensual = st.number_input('Max desembolso mensual', 0, 30, max_desembolso_mensual)
-
-	#_ = [inputs[n].update({ 'max_desembolso_mensual': max_desembolso_mensual}) for n in range(N)]
-	#meses_display = st.selectbox('Ilustración (meses)', np.arange(60, 721, 60), index=4, key="meses_display")
-	#meses_display = MAX_MESES_INV
 
 	meses_boton = st.checkbox(VISUALIZACION, value=False, key='longview', on_change=None, disabled=False)
 	meses_display = SHORT_VIEW if meses_boton == False else MAX_LENGTH
@@ -176,22 +162,12 @@ zeros = [0 for _ in NN]
 # Matrices for internal calcs; not graphs.
 # 1 - 3:
 growth_matrix     = proc.growth_matrix(inversiones, rates, MAX_LENGTH, curva_flag=curva_si_o_no, curvas=curva_steps, curva_next=curva_next)
-income_matrix     = proc.income_matrix(ingresos, MAX_LENGTH, retrasos=retrasos)
 income_raw        = proc.income_matrix(ingresos, MAX_LENGTH)
-#st.write("income_matrix", income_matrix[0:1])
+income_matrix     = proc.shift_sequences(income_raw.copy(), shifts=retrasos, fill_values=0)#income_matrix     = proc.income_matrix(ingresos, MAX_LENGTH, retrasos=retrasos)
 desembolso_matrix = proc.income_matrix(desembolsos, MAX_LENGTH)
-#st.write("income_matrix", income_matrix[0:1])
-#equity = growth_matrix - to_1d(inversiones) + to_1d(caps) + desembolso_matrix ~~~ g+i-d
-#cutoff, y = proc.matrices_intersect_greater_equal(reference=growth_matrix, test=equity)
-#cutoff = [cutoff[n]+1 for n in range(len(cutoff))]
-#equity = proc.cut_after_x_pos(equity, positions=cutoff)
-#st.write("equity", equity)
 
 loan_ranger           = proc.loan_ranger(Principals, tasas, length=MAX_LENGTH) 
 out_of_bounds, list_  = proc.out_of_bounds_check(reference=income_matrix[0:N,-1]+desembolso_matrix[0:N,-1], test=loan_ranger[0:N,-1])
-#loan_ranger           = proc.shift_sequences(loan_ranger, retrasos)
-#st.write("loan", loan_ranger[0:1])
-#st.write("in", income_matrix+desembolso_matrix)[0:1]; exit()
 xs_repay, ys_repay    = proc.matrices_intersect_greater_equal(reference=loan_ranger, test=income_matrix+desembolso_matrix)
 if out_of_bounds == True:
 	for i in range(len(list_)):
@@ -212,8 +188,7 @@ if out_of_bounds == 999:
 	out_of_bounds, list_  = proc.out_of_bounds_check(reference=income_matrix[0:N,-1]+desembolso_matrix[0:N,-1], test=loan_ranger[0:N,-1])
 	ALERT = None if out_of_bounds == False else f"⚠️ The projection is out of bounds. ⚠️  \nIn {MAX_LENGTH} months you will not repay the debt. Try increasing income or spending or try reducing interest rate."
 
-# Calc quickest payback time of debt and what the debt will be for that speed.
-
+# Fill with values
 amorts_totals_sharp   = [loan_ranger[n][xs_repay[n]] for n in NN] # PROBLEM IF OUT OF BOUNDS
 amorts_totals_closest = [ys_repay[n] for n in NN]
 amorts_repay_times    = [xs_repay[n]+1 for n in NN]
@@ -222,48 +197,25 @@ interests             = [amorts_totals_sharp[_]-Principals[_] for _ in NN]
 #del loan_ranger
 
 
-#st.write("DES", DESembolso_matrix_[0:1])
 # 4: Debt
 pre_debt  = to_1d(initial_diffs) - desembolso_matrix
 pre_debtc = pre_debt.copy()
 pre_debt  = proc.set_value_after_pos(pre_debt, retrasos, value=0) # Not necessary, because of cut_tail? Also, 'retrasos' can be too few steps: last steps may be below 0.
-#st.write("pre_debt", pre_debt[0:1])
 bank_debt = to_1d(amorts_totals_sharp) - (income_raw + desembolso_matrix) # desembolso shifted? ***********************************
 bank_debts= bank_debt[:,0]
 bank_debt = proc.shift_sequences(bank_debt, retrasos, fill_values=0) # bank_debt.copy() ?
-#st.write("bank_debt", bank_debt[0:1])
 debt      = pre_debt + bank_debt
 debt      = proc.cut_tail(debt, limits=[STRANGE_NEAR_ZERO for _ in NN], fill=0) # 0 is better, but gives strange values in debt (then later) patri matrices.
-#print(debt[0:1,0:36]); exit()
-#del pre_debt, bank_debt
-
 # stack or mask 2 np matrices
 
-#debt_matrix = proc.prepend(debt_matrix, [Principals[n] for _ in NN], until_positions=amorts_repay_times)
-#debt_matrix[0][:amorts_repay_times[0]] = 0
-#st.write("debt_MX", debt_matrix)
-#print("debtmx: ", debt_matrix[0][:30]); exit()
-
-# pass function?
-
-#st.write("income_matrix", income_matrix.copy(), amorts_repay_times, fill_values=0)
 
 # Matrices for graphing.                                income_raw ??
 patrimonio_bruto = growth_matrix + proc.shift_sequences(income_matrix.copy(), amorts_repay_times, fill_values=0) # Fix so that it includes income_matrix after bank repay. 
-#st.write("Repaytimes", amorts_repay_times)
-
-#print("-+", -bank_debt[0:1,0:36] + patrimonio_bruto[0:1,0:36])
 patrimonio_neto  = patrimonio_bruto - debt #growth_matrix + income_matrix - debt #- diff_matrix
-
-#patrimonio_neto  = proc.set_None_after_x_pos(patrimonio_bruto.copy() - debt_matrix.copy(), positions=amorts_repay_times).copy()
 patri_matrix = np.zeros([N*2+1, MAX_LENGTH])
 patri_matrix[0:N] = patrimonio_bruto
 patri_matrix[N:N*2] = patrimonio_neto # equity
-
 patri_matrix[N*2:N*2+N_extra] = None # Alternative equity.
-
-
-#st.write("patri neto", patrimonio_neto[0:1])
 
 
 xs_repay = proc.to_dict(xs_repay)
@@ -274,7 +226,6 @@ xs_repay = proc.to_dict(xs_repay)
 # Use loan_cost_ranger for roi matrix! The sooner you sell, the less you lose.
 #
 #loan_matrix = proc.shift_sequences(loan_ranger.copy(), shifts=[inputs[n]['shift'] for n in NN])
-
 #loan_matrix = proc.shift_sequences(loan_matrix, shifts=[inputs[n]['retraso'] for n in NN], fill_values=None)
 #l_matrix = proc.repeat_last_after(loan_matrix, targets=repay_amounts)
 #roi_matrix = proc.roi_matrix(inputs, mmatrix[0:N,:], temp_matrix, l_matrix)
@@ -288,25 +239,20 @@ spent = gentools.filter_matrix_greater_than(spent, limits_list=inversiones, in_p
 costmx = proc.shift_sequences(loan_ranger[::].copy(), retrasos, fill_values=0) - to_1d(Principals)
 costmx[costmx < 0] = 0
 
-#spending_times = [amorts_repay_times[_] + retrasos[_] for _ in NN]
-#spent = proc.set_value_after_pos(spent, spending_times, value=200) # Use last value on repeat instead.
 with np.errstate(divide='ignore'):#, invalid='ignore'):
 	roi_matrix  = patrimonio_bruto[::] / (-pre_debtc + spent[::] + costmx) # Implement loan_cost_ranger
-
 #roi_matrix  = np.all(-pre_debtc + spent[::] + costmx) and (patrimonio_bruto[::] / (-pre_debtc + spent[::] + costmx)) or 0
 
 numerator   = patrimonio_bruto[::] - pre_debtc[::] - costmx[::]
 denominator = spent[::]
-
 roi_matrix  = numerator / denominator
 
 
 # ROI - comisiones
 com = comision_constructora + comision_inmob
-#roi_com_matrix = proc.roi_matrix_minus_commission(com, inputs, growth_matrix, patri_matrix[0:N,:], temp_matrix, l_matrix)
 roi_com_matrix = proc.roi_minus_commission(com, growth_matrix[0:N], patrimonio_neto, spent)
-
 #roi_com_matrix[roi_com_matrix < 0] = STRANGE_NEAR_ZERO # Is this a good idea?
+
 
 # Makes little sense: Best time is month 1, but it also creates very little money in absolute terms. Plus, it takes time to find properties.
 rmx              = roi_matrix.copy()
@@ -323,14 +269,8 @@ y_r = [2 for n in NN]
 x_r, y_r = proc.x_intercepts_for_y(roi_matrix.copy(), targets=y_r)
 gain_roiearl_com = [patrimonio_bruto[n][pos]-inversiones[n]-com*patrimonio_bruto[n][pos] for n, pos in zip(range(N), roi_earliest_com)] # Then: gain_roiearl_com = [gain_roiearl_com[n][0] for n in NN] # Flatten
 gains_at_entrega = [patrimonio_bruto[n][r]-inversiones[n]-com*patrimonio_bruto[n][r] for n, r in zip(range(N), retrasos)]
-#st.write("x_r", x_r, "y_r", y_r, "hides", hides)
 cost_opt_roi_com_time = [costmx[n][x] for n, x in zip(range(N), roi_earliest_com)]
 
-
-#cash_until_repayment_dates = [caps[n] + amorts_totals_sharp]
-
-#ys_repay = proc.to_dict(ys_repay)
-#y_s = [amorts_totals_closest[_] for _ in NN]
 
 # Saldar con bbanco
 #smatrix, x_s = proc.smatrix(income_matrix[::] + D_matrix[::], ys_repay)
@@ -343,12 +283,10 @@ indices = [indices[n]+shifts[n] for n in NN]
 x_s = gentools.to_dict(indices)
 smatrix[smatrix == 1] = None # Shaves off after.
 smatrix[smatrix == 0] = None # Shaves off before.
-
 #smatrix[smatrix < to_1d(initial_diffs)] = 999
-
 y_s = amorts_totals_closest
 #y_s = proc.to_dict(amorts_totals_closest)
-#y_s = [processed[n]['loan_repay_amount'] for n in NN]
+
 
 # Restaurar cap_ini para nueva compra
 #duo_matrix, x_duo, y_duo = proc.duo_matrix(spent, limits=caps, end_values=amorts_totals_closest, maxlength=MAX_LENGTH)
@@ -365,22 +303,17 @@ for n in range(N, N*2):
 	m = duo_matrix[n:n+1].view()
 	m[m > caps2[n]] = None
 
-#duo_matrix[N:N*2] = proc.set_value_before_pos(duo_matrix[N:N*2], positions=amorts_repay_times, value=None)
-
+# To do: Use lowest of two (in case retrasos > time to pay back)
 x_duo = [0 for _ in NN] + [amorts_repay_times[n] + retrasos[n] for n in NN]
-#st.write("x_duo", x_duo);
 x_duo = proc.to_dict(x_duo) #; x_duo = [None for _ in NN]
 y_duo = proc.to_dict(caps2)
 
-#cutoffs, y = proc.matrices_intersect_greater_equal(reference=duo_matrix[N:N*2], test=np.zeros([1, duo_matrix.shape[1]]))
-#x_duo = [cutoffs[n]+1 for n in range(len(cutoffs))]
+r = retrasos.copy()
+r.extend(r)
+duo_matrix = proc.shift_sequences(duo_matrix, shifts=r, fill_values=None)
 xx, yy = proc.x_intercepts_for_y(duo_matrix[N:N*2], targets=caps) # Not implemented yet
-#print(xx); 
 x_duo = xx#[xx[n]+1 for n in range(len(xx))]
-
-x_duo = proc.to_dict([amorts_repay_times[n] + int(caps[n]/(desembolsos[n]+ingresos[n])) for n in NN])
-
-
+x_duo = proc.to_dict([retrasos[n] + amorts_repay_times[n] + int(caps[n]/(desembolsos[n]+ingresos[n])) for n in NN])
 
 
 # Make chain (next graph starts where last finished).
@@ -427,8 +360,6 @@ pmatrix, x_p, y_p = proc.pmatrix2(growth_matrix, income_matrix, spent, to_1d(inv
 
 # Oportunidad alternativa (bolsa)
 if r_mes_opor != 1:
-	#opor_matrix = proc.opor_sequence(inputs, r_mes_opor, MAX_LENGTH, untils=x_duo) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
-	#opor_matrix = proc.opor_sequence2(inputs, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
 	opor_matrix = proc.opor_sequence3(opor_cap_ini, opor_saving, r_mes_opor, MAX_LENGTH, until=opor_until) # opor_sequence2 involves eternal saving; oporsequence until recovered cap_ini
 	opor_matrix = proc.shift_sequences(opor_matrix, shifts=[inputs[n]['shift'] for n in NN])
 	h = patri_matrix.shape[0]
@@ -484,11 +415,11 @@ with colGraph:
 
 	tab1, roimatrx, roi2matrix, Banco, BancoCap, PagaSolo, datasheet = st.tabs([f'{PATRIMONIO}', f'|  {ROI_}',  f'|  {ROICOM}', f'|  {BANCO}', f'|  {BANCO_CAP}',f'|  {NETGAIN}',f'|  {DATASHEET}']) #PagaSolo
 	with tab1:
-		xs_inv, ys_inv = proc.find_x_intercepts_for_y(patri_matrix[0:N], targets=interests)
+		xs_inv, ys_inv = proc.x_intercepts_for_y(patri_matrix[0:N], targets=interests)
 
 		#names = []
 		#_ = [names.append(inputs[n]['name']) for n in NN]
-		_ = [names.append(inputs[n]['name'] + str(' - neto')) for n in NN]
+		_ = [names.append(inputs[n]['name'] + str(', '+NETONETA)) for n in NN]
 		#names = [inputs[n]['name'] for n in NN]
 		names.append("Opor")
 		#names.append("Opor2")

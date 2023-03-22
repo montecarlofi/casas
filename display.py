@@ -1,3 +1,4 @@
+import gentools
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -58,16 +59,19 @@ def plot(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None):
 
 	data = []
 	for l in range(N):
-		line_data = mtrx[l]
-		for i in range(line_data.shape[0]):
-			d = { 'name': inputs[l]['name'], 'mes': i, 'y': line_data[i], 'loan_repay_time': 1 }
-			#if inputs[l]['ingreso_pesimista'] == 0:
-			if inputs[l]['hide_graph'] == True:
-				pass
-			else:
+		if inputs[l]['hide_graph'] == True:
+			pass
+		else:
+			line_data = mtrx[l]
+			for i in range(line_data.shape[0]):
+				d = { 'name': inputs[l]['name'], 'mes': i, 'y': line_data[i], 'loan_repay_time': 1 }
 				data.append(d)
 
 	df = pd.DataFrame(data)
+
+	#colnames = [inputs[n]['name'] for n in range(N)]
+	#switches = [inputs[n]['hide_graph'] for n in range(N)]
+	#df = pd.DataFrame(gentools.make_table(mtrx, colnames, switches, x_axis_label='mes', y_axis_label='y'))
 
 	if colours == None:
 		colours = ['green', 'blue', 'orange', 'red', 'lightgreen', 'lightblue', 'rgb(254, 217, 166)', 'pink']
@@ -116,17 +120,13 @@ def plot2(mtrx, xs, ys, N, names=None, hides=None, colours=None, show_labels=Tru
 
 	data = []
 	for l in range(N):
-		line_data = mtrx[l]
-		for i in range(line_data.shape[0]):
-			#print("name: ", names[l])
-			d = { 'name': names[l], 'mes': i, 'y': line_data[i] }
-			#if inputs[l]['ingreso_pesimista'] == 0:
-			if hides[l] == True:
-				pass
-			else:
+		if hides[l] == True:
+			pass
+		else:
+			line_data = mtrx[l]
+			for i in range(line_data.shape[0]):
+				d = { 'name': names[l], 'mes': i, 'y': line_data[i] }
 				data.append(d)
-				#print(d)
-
 	df = pd.DataFrame(data)
 
 	if colours == None:
@@ -173,15 +173,13 @@ def plot_duo(inputs, mtrx, xs, ys, colours=None, show_labels=True, labels=None, 
 
 	data = []
 	for l in range(N):
-		line_data = mtrx[l]
-		for i in range(line_data.shape[0]):
-			d = { 'name': names[l], 'mes': i, 'y': line_data[i], 'blob': 1 }
-			#if inputs[l]['ingreso_pesimista'] == 0:
-			if hide_graphs[l] == True:
-				pass
-			else:
+		if hide_graphs[l] == True:
+			pass
+		else:
+			line_data = mtrx[l]
+			for i in range(line_data.shape[0]):
+				d = { 'name': names[l], 'mes': i, 'y': line_data[i], 'blob': 1 }
 				data.append(d)
-
 	df = pd.DataFrame(data)
 
 	if colours == None:
