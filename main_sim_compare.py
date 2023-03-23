@@ -32,7 +32,7 @@ from CONSTANTS import *
 import gentools
 from gentools import list_to_1d_matrix as to_1d
 from gentools import list_to_1d_flat as to_1d_flat
-LANG = 'English'
+LANG = 'Spanish'
 if LANG == 'Spanish':
 	from LANG_SPA import *
 elif LANG == 'English':
