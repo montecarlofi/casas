@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 from CONSTANTS import *
-LANG = 'English'
+LANG = 'Spanish'
 if LANG == 'Spanish':
 	from LANG_SPA import *
 elif LANG == 'English':
